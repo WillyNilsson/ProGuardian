@@ -65,14 +65,14 @@ describe('Claude Wrapper Tests', () => {
       const content = await readFile(wrapperPath, 'utf-8')
 
       // Should handle ENOENT error
-      assert(content.includes("error.code === 'ENOENT'"))
+      assert(content.includes("err.code === 'ENOENT'"))
       assert(content.includes('claude-original not found'))
 
       // Should suggest running install-wrapper
       assert(content.includes('proguardian install-wrapper'))
 
       // Should use handleError utility
-      assert(content.includes('handleError(error'))
+      assert(content.includes('handleError(err'))
     })
 
     it('should prevent argument duplication', async () => {

@@ -4,6 +4,7 @@
  */
 
 import path from 'path'
+import { error as logError } from './logger.js'
 
 /**
  * Sanitize error messages to prevent information disclosure
@@ -170,21 +171,21 @@ export function handleError(error, options = {}) {
   const { exit = true, verbose = false } = options
 
   if (error instanceof SecurityError) {
-    console.error('Security violation:', error.message)
+    logError(`Security violation: ${error.message}`)
     if (verbose && process.env.NODE_ENV === 'development') {
-      console.error('Details:', error.details)
+      logError(`Details: ${JSON.stringify(error.details)}`)
     }
   } else if (error instanceof ValidationError) {
-    console.error('Validation failed:', error.message)
+    logError(`Validation failed: ${error.message}`)
   } else if (error instanceof PermissionError) {
-    console.error('Permission denied:', error.message)
+    logError(`Permission denied: ${error.message}`)
   } else if (error instanceof ProGuardianError) {
-    console.error(`${error.code}:`, error.message)
+    logError(`${error.code}: ${error.message}`)
   } else {
     // Unknown errors - don't expose stack traces in production
-    console.error('An unexpected error occurred')
+    logError('An unexpected error occurred')
     if (verbose || process.env.NODE_ENV === 'development') {
-      console.error(error)
+      logError(error.message || error.toString(), error)
     }
   }
 

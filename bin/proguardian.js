@@ -22,15 +22,16 @@ import { checkCommand } from '../src/commands/check.js'
 import { installWrapper } from '../src/commands/install-wrapper.js'
 import chalk from 'chalk'
 import { handleError } from '../src/utils/errors.js'
+import { error } from '../src/utils/logger.js'
 
 // Global error handling
-process.on('uncaughtException', (error) => {
-  console.error(chalk.red('Unexpected error:'), error.message)
+process.on('uncaughtException', (err) => {
+  error(`Unexpected error: ${err.message}`)
   process.exit(1)
 })
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error(chalk.red('Unhandled promise rejection:'), reason)
+  error(`Unhandled promise rejection: ${reason}`)
   process.exit(1)
 })
 
@@ -99,7 +100,7 @@ program.configureHelp({
 const args = process.argv.slice(2)
 for (const arg of args) {
   if (typeof arg === 'string' && (arg.includes('\n') || arg.includes('\r') || arg.includes('\0'))) {
-    console.error(chalk.red('Invalid command line argument detected'))
+    error('Invalid command line argument detected')
     process.exit(1)
   }
 }

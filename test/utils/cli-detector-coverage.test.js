@@ -56,9 +56,9 @@ describe('CLI Detector Module Coverage Tests', () => {
 
       // Check getTargetFilename validation
       assert(content.includes('validateCLIType(cliType)'))
-      assert(content.includes('if (error instanceof ValidationError)'))
+      assert(content.includes('if (err instanceof ValidationError)'))
       assert(content.includes('Invalid CLI type:'))
-      assert(content.includes('throw error')) // Re-throw non-validation errors
+      assert(content.includes('throw err')) // Re-throw non-validation errors
 
       // Check switch statement
       assert(content.includes('switch (cliType)'))
@@ -98,7 +98,7 @@ describe('CLI Detector Module Coverage Tests', () => {
       assert(content.includes('Detected Gemini CLI'))
 
       // Check prompt scenario
-      assert(content.includes('return promptForCLI(available)'))
+      assert(content.includes('return await promptForCLIAsync(available)'))
     })
 
     it('should format prompt messages correctly', async () => {

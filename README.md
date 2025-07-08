@@ -6,76 +6,54 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Security Scan](https://github.com/WillyNilsson/ProGuardian/workflows/Security/badge.svg)](https://github.com/WillyNilsson/ProGuardian/actions/workflows/security.yml)
 
-Guardian 2.0 supervision for AI coding assistants. Aims to improve code quality, security, and best practices by transforming your AI assistant into a senior engineer who writes code with rigorous self-review.
+A personal tool I built to enhance my workflow with AI coding assistants. While Claude Code and Gemini CLI are amazing tools, I encountered some recurring issues that led me to create ProGuardian as a quality assurance layer.
 
-## Why Does ProGuardian Exist?
+## Why I Built This
 
-Modern AI coding assistants are incredibly powerful, but they have a fundamental limitation: their primary goal is **task completion**. This can lead them to take shortcuts, introduce subtle bugs, "cheat" on tests to make them pass, or write code that is functional but not maintainable or secure.
+I love using AI coding assistants - they've transformed how I work. But I noticed patterns that were causing some tension:
 
-ProGuardian attempts to address this by fundamentally reframing the AI's role. Instead of a developer focused on just getting the code written, the AI is encouraged to act as a **Senior Engineer (Guardian)** whose primary goal is **code quality through direct implementation with rigorous self-review**.
+- **Placeholder code**: `// TODO: implement this properly` appearing in "completed" features
+- **Test cheating**: Tests that always pass, or tests weakened to match buggy code
+- **Security oversights**: Hardcoded values, missing input validation, generic error handling
+- **Shortcuts**: "Quick fixes" that become permanent technical debt
+- **Incomplete work**: Code that technically runs but isn't production-ready
 
-### Guardian 2.0: A Better Approach
+## What ProGuardian Does
 
-The original Guardian protocol relied on delegation to subagents, which introduced accuracy problems due to context loss. Guardian 2.0 takes a different approach:
+ProGuardian adds a "Guardian Protocol" layer to your AI assistant that attempts to encourage a more methodical approach through a review-gate workflow:
 
-- **Direct Implementation**: Senior engineers write critical code themselves
-- **Mechanical Self-Review**: Enforced review steps that require actual re-reading of code
-- **Safety Rails**: Protection against deletions, scope creep, and other disasters
-- **Penalties**: Real consequences for violations to reinforce proper behavior
-
-This psychological shift is the key. By making the AI responsible for both implementation AND review, with mechanical steps that are designed to be followed, we aim for higher quality outcomes.
-
-## How It Works
-
-ProGuardian **enhances** your existing `CLAUDE.md` or `GEMINI.md` by adding the Guardian 2.0 protocol that:
-
-1.  Preserves your AI CLI's project understanding
-2.  Adds the Senior Engineer identity with direct implementation responsibility
-3.  Implements mechanical review steps designed to encourage thorough review
-4.  Adds safety rails to help reduce common issues
-5.  Maintains all your project-specific context
-
-Your enhanced file will look like:
-
-```markdown
-# Original project context from claude init
-
-[Project structure, dependencies, conventions...]
-
-## 🛡️ GUARDIAN MODE ACTIVE
-
-# GUARDIAN 2.0 - Senior Engineer Protocol
-
-[Critical safety rails, mechanical review steps, penalties...]
+```
+Plan → Review → Implement → Review → Test → Review → Done
 ```
 
-## Key Features
+The idea is that each review gate should be completed before proceeding, with evidence like grep outputs and test results. Whether the AI actually follows this varies.
 
-### Guardian 2.0 Safety Rails
+### Key Features
 
-- 🛡️ **Deletion Protection**: Helps prevent unauthorized file/code deletion
-- 🛡️ **Scope Validation**: Encourages changes to match what was requested
-- 🛡️ **Existing Code Check**: Helps avoid duplicate implementations
-- 🛡️ **Mechanical Review**: Encourages actual re-reading of changes
+- **Works with existing tools**: Enhances your CLAUDE.md or GEMINI.md files
+- **14-step workflow**: Structured approach designed to catch issues early
+- **Evidence-based reviews**: Asks for grep outputs, test results, actual proof
+- **Anti-placeholder stance**: Explicitly discourages TODOs and mock implementations
+- **Test integrity focus**: Encourages fixing code rather than weakening tests
 
-### Helps Reduce Common AI Issues
+## Status: Work in Progress
 
-- ❌ Test cheating (modifying tests to pass)
-- ❌ Placeholder code or TODOs
-- ❌ Shortcuts or quick fixes
-- ❌ Exposed secrets or security vulnerabilities
-- ❌ Scope creep or unwanted "improvements"
-- ❌ Skipping review steps
+This is an active project I'm continuously improving based on my own usage. It's not perfect or complete - I'm discovering edge cases and refining the approach as I use it daily. 
 
-### Encourages Best Practices
+Current state:
+- ✅ Core workflow implemented and tested
+- ✅ Works with both Claude Code and Gemini CLI
+- ✅ Published on npm for easy installation
+- 🚧 Continuous refinements based on real usage
+- 🚧 Adding new safety checks as I encounter issues
 
-- ✅ Comprehensive error handling
-- ✅ Security-first approach
-- ✅ Performance optimization
-- ✅ Proper testing strategies
-- ✅ Clean, maintainable code
-- ✅ Production-ready implementations
-- ✅ Automatic issue fixes during review
+### Known Limitations
+
+- **Compliance varies**: Sometimes the AI forgets or ignores the CLAUDE.md and GEMINI.md
+- **Not foolproof**: Even with the protocol, issues can slip through
+- **Context matters**: Works better for some tasks than others
+- **Requires patience**: The review steps add time to the development process
+- **Possibly increases cost**: More steps and longer .MD = more tokens.
 
 ## Installation
 
@@ -83,42 +61,50 @@ Your enhanced file will look like:
 npm install -g @proguardian/cli
 ```
 
-## Quick Start
+## Usage
 
-1.  **First, let your AI CLI analyze your project:**
+### 1. Initialize Guardian in your project:
+```bash
+cd your-project
+proguardian init
+```
 
-    ```bash
-    cd your-project
-    claude init   # Creates CLAUDE.md with project understanding
-    # OR
-    gemini init   # Creates GEMINI.md with project understanding
-    ```
+This enhances your existing CLAUDE.md or GEMINI.md file (or creates one if needed).
 
-2.  **Then add Guardian supervision:**
+### 2. Optional: Install the wrapper
+```bash
+proguardian install-wrapper
+```
 
-    ```bash
-    proguardian init   # Auto-detects and enhances the appropriate file
-    ```
+This creates a wrapper that automatically enforces Guardian mode when `.proguardian` exists.
 
-3.  **Start coding with Guardian protection:**
-    ```bash
-    claude  # or gemini
-    ```
+### 3. Use your AI assistant normally
+```bash
+claude "implement user authentication"
+# or
+gemini "add error handling to the API"
+```
 
-## About the Author
+The AI should now follow the Guardian protocol - planning before coding, reviewing implementation, and running actual tests. In practice, you might need to remind it occasionally (is that the Guardian way?), as AIs don't always stick to their context files.
 
-Hi I'm, **Willy Nilsson**, ([willynilsson.com](https://willynilsson.com)).
-
-I'm a builder and researcher focused on the practical application and deeper understanding of AI. And I'm open4work.
-Some of my other projects include:
-
-- **[AISReact.com](https://aisreact.com)**: A benchmark that hopes to evaluate different AI models not on performance, but on their inherent biases and worldviews.
-- **DeepOptimizer**: A tool that checks your code against published AI-techniques to identify potential improvements.
-
-## License
-
-Apache License 2.0
+```
 
 ## Contributing
 
-Contributions are welcome!
+Since this is a personal tool I'm actively developing and using myself, I welcome feedback and contributions! If you encounter issues or have ideas for improvements:
+
+- Open an issue describing what you encountered
+- Share your use cases - I'm curious how others might use this
+- PRs welcome, especially for edge cases I haven't encountered yet
+
+## Technical Details
+
+- **Node.js 20+** required
+
+## License
+
+Apache 2.0.
+
+---
+
+*ProGuardian is a personal project not affiliated with Anthropic (Claude) or Google (Gemini), though I would obviously love for that to change.*

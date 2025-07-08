@@ -13,23 +13,24 @@ import {
   formatError,
   sanitizeErrorMessage,
 } from '../../src/utils/errors.js'
+import { logger } from '../../src/utils/logger.js'
 
 describe('Error Utilities Tests', () => {
-  let originalConsoleError
+  let originalErrorHandler
   let originalProcessExit
   let consoleErrors
   let exitCalled
   let exitCode
 
   before(() => {
-    // Mock console.error and process.exit
-    originalConsoleError = console.error
+    // Save original handlers
+    originalErrorHandler = logger.outputHandlers.error
     originalProcessExit = process.exit
   })
 
   after(() => {
     // Restore original methods
-    console.error = originalConsoleError
+    logger.setOutputHandler('error', originalErrorHandler)
     process.exit = originalProcessExit
   })
 
@@ -38,9 +39,10 @@ describe('Error Utilities Tests', () => {
     exitCalled = false
     exitCode = null
 
-    console.error = (...args) => {
+    // Mock the logger's error output
+    logger.setOutputHandler('error', (...args) => {
       consoleErrors.push(args.join(' '))
-    }
+    })
 
     process.exit = (code) => {
       exitCalled = true
@@ -263,8 +265,9 @@ describe('Error Utilities Tests', () => {
 
       handleError(error, { exit: false })
 
-      assert(consoleErrors.some((line) => line.includes('FILE_OPERATION_ERROR:')))
-      assert(consoleErrors.some((line) => line.includes('Cannot write file.txt')))
+      const errorOutput = consoleErrors.join(' ')
+      assert(errorOutput.includes('FILE_OPERATION_ERROR:'))
+      assert(errorOutput.includes('Cannot write file.txt'))
     })
 
     it('should handle CLINotFoundError', () => {
@@ -312,8 +315,9 @@ describe('Error Utilities Tests', () => {
       const error = new SecurityError('Hack attempt', { ip: '192.168.1.1', path: '/etc/passwd' })
       handleError(error, { exit: false, verbose: true })
 
-      assert(consoleErrors.some((line) => line.includes('Security violation:')))
-      assert(consoleErrors.some((line) => line.includes('Details:')))
+      const errorOutput = consoleErrors.join(' ')
+      assert(errorOutput.includes('Security violation:'))
+      assert(errorOutput.includes('Details:'))
 
       process.env.NODE_ENV = originalEnv
     })
@@ -344,20 +348,23 @@ describe('Error Utilities Tests', () => {
 
       handleError(error, { exit: false, verbose: true })
 
-      assert(consoleErrors.some((line) => line.includes('An unexpected error occurred')))
-      assert(!consoleErrors.some((line) => line.includes('at test.js:10:5')))
+      const errorOutput = consoleErrors.join(' ')
+      assert(errorOutput.includes('An unexpected error occurred'))
+      assert(!errorOutput.includes('at test.js:10:5'))
 
       process.env.NODE_ENV = originalEnv
     })
 
     it('should handle null/undefined errors gracefully', () => {
       handleError(null, { exit: false })
-      assert(consoleErrors.some((line) => line.includes('An unexpected error occurred')))
+      const errorOutput1 = consoleErrors.join(' ')
+      assert(errorOutput1.includes('An unexpected error occurred'))
 
       consoleErrors = []
 
       handleError(undefined, { exit: false })
-      assert(consoleErrors.some((line) => line.includes('An unexpected error occurred')))
+      const errorOutput2 = consoleErrors.join(' ')
+      assert(errorOutput2.includes('An unexpected error occurred'))
     })
 
     it('should handle ProGuardianError with code', () => {
@@ -365,8 +372,9 @@ describe('Error Utilities Tests', () => {
 
       handleError(error, { exit: false })
 
-      assert(consoleErrors.some((line) => line.includes('Validation failed:')))
-      assert(consoleErrors.some((line) => line.includes('Invalid username: too short')))
+      const errorOutput = consoleErrors.join(' ')
+      assert(errorOutput.includes('Validation failed:'))
+      assert(errorOutput.includes('Invalid username: too short'))
     })
   })
 
@@ -472,9 +480,10 @@ describe('Error Utilities Tests', () => {
 
       handleError(error, { exit: false })
 
-      assert(consoleErrors.some((line) => line.includes('Security violation:')))
-      assert(consoleErrors.some((line) => line.includes('Path traversal attempt detected')))
-      assert(!consoleErrors.some((line) => line.includes('../../../etc/passwd'))) // Should not leak the path
+      const errorOutput = consoleErrors.join(' ')
+      assert(errorOutput.includes('Security violation:'))
+      assert(errorOutput.includes('Path traversal attempt detected'))
+      assert(!errorOutput.includes('../../../etc/passwd')) // Should not leak the path
     })
 
     it('should handle command injection attempts', () => {
@@ -482,9 +491,10 @@ describe('Error Utilities Tests', () => {
 
       handleError(error, { exit: false })
 
-      assert(consoleErrors.some((line) => line.includes('Security violation:')))
-      assert(consoleErrors.some((line) => line.includes('Potentially unsafe characters detected')))
-      assert(!consoleErrors.some((line) => line.includes('rm -rf'))) // Should not leak the command
+      const errorOutput = consoleErrors.join(' ')
+      assert(errorOutput.includes('Security violation:'))
+      assert(errorOutput.includes('Potentially unsafe characters detected'))
+      assert(!errorOutput.includes('rm -rf')) // Should not leak the command
     })
 
     it('should properly sanitize multiple sensitive data types', () => {

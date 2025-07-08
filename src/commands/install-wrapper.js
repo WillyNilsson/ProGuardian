@@ -6,77 +6,127 @@ import { securePathExists, secureCopyFile, checkPermissions } from '../utils/fil
 import { validateOptions, validateSafePath } from '../utils/validation.js'
 import { handleError, PermissionError } from '../utils/errors.js'
 import fs from 'fs-extra'
+import { log, success, error, warn } from '../utils/logger.js'
+import '../utils/cli-detector.js' // For side effects only
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+async function installWrapperForCLI(cliName, wrapperName, options) {
+  try {
+    // Find where the CLI is installed
+    let cliPath
+    try {
+      cliPath = await which(cliName)
+    } catch {
+      return false // CLI not found
+    }
+
+    const cliDir = path.dirname(cliPath)
+
+    // Check write permissions on the directory
+    if (!(await checkPermissions(cliDir, fs.constants.W_OK))) {
+      throw new PermissionError('write to directory', cliDir)
+    }
+
+    // Validate paths
+    const backupPath = validateSafePath(`${cliName}-original`, cliDir)
+
+    // Backup original binary
+    if (!(await securePathExists(backupPath))) {
+      log(chalk.gray(`Backing up original ${cliName} to ${path.basename(backupPath)}`))
+      await secureCopyFile(cliPath, backupPath)
+
+      // Make backup executable
+      await fs.chmod(backupPath, '755')
+    } else if (!options.force) {
+      warn(`Backup for ${cliName} already exists. Use --force to overwrite.`)
+      return true // Already installed
+    }
+
+    // Install our wrapper
+    const wrapperRelativePath = path.join('..', 'wrapper', wrapperName)
+    const wrapperSource = validateSafePath(wrapperRelativePath, __dirname)
+
+    log(chalk.gray(`Installing wrapper to ${path.basename(cliPath)}`))
+    await secureCopyFile(wrapperSource, cliPath, { overwrite: true })
+    await fs.chmod(cliPath, '755')
+
+    success(`Guardian wrapper installed for ${cliName}!`)
+    log(chalk.gray(`  Original ${cliName} backed up to: ${cliName}-original`))
+
+    return true
+  } catch (err) {
+    if (err instanceof PermissionError) {
+      error(`Permission denied for ${cliName}: ${err.message}`)
+      log()
+      warn('Try running with sudo:')
+      log(chalk.gray('  sudo proguardian install-wrapper'))
+      log()
+      warn('Or use the alternative approach:')
+      log(chalk.gray('  Add this to your shell profile (~/.bashrc or ~/.zshrc):'))
+      log(chalk.gray(`  alias ${cliName}="proguardian-${cliName}"`))
+      return false
+    } else {
+      throw err
+    }
+  }
+}
 
 export async function installWrapper(options = {}) {
   try {
     // Validate command options
     validateOptions('install-wrapper', options)
 
-    console.log(chalk.cyan('Installing Guardian wrapper...\n'))
+    log(chalk.cyan('Installing Guardian wrapper...\n'))
 
-    // Find where claude is installed
-    let claudePath
+    // Check which CLI tools are available
+    let claudeInstalled = false
+    let geminiInstalled = false
+
+    // Try to install wrapper for Claude
     try {
-      claudePath = await which('claude')
-    } catch {
-      console.error(chalk.red('Claude CLI not found'))
-      console.log(chalk.gray('Please install Claude Code CLI first:'))
-      console.log(chalk.gray('  npm install -g @anthropic/claude-code'))
+      claudeInstalled = await installWrapperForCLI('claude', 'claude-wrapper.js', options)
+    } catch (err) {
+      if (!(err instanceof PermissionError)) {
+        throw err
+      }
+    }
+
+    // Try to install wrapper for Gemini
+    try {
+      geminiInstalled = await installWrapperForCLI('gemini', 'gemini-wrapper.js', options)
+    } catch (err) {
+      if (!(err instanceof PermissionError)) {
+        throw err
+      }
+    }
+
+    // Summary
+    if (!claudeInstalled && !geminiInstalled) {
+      error('No AI CLI tools found to wrap')
+      log()
+      log(chalk.gray('Please install one of the following first:'))
+      log(chalk.gray('  Claude Code: npm install -g @anthropic/claude-code'))
+      log(chalk.gray('  Gemini CLI: npm install -g @google/gemini-cli'))
       return
     }
-
-    const claudeDir = path.dirname(claudePath)
-
-    // Check write permissions on the directory
-    if (!(await checkPermissions(claudeDir, fs.constants.W_OK))) {
-      throw new PermissionError('write to directory', claudeDir)
-    }
-
-    // Validate paths
-    const backupPath = validateSafePath('claude-original', claudeDir)
-
-    // Backup original claude binary
-    if (!(await securePathExists(backupPath))) {
-      console.log(chalk.gray(`Backing up original claude to ${path.basename(backupPath)}`))
-      await secureCopyFile(claudePath, backupPath)
-
-      // Make backup executable
-      await fs.chmod(backupPath, '755')
-    } else if (!options.force) {
-      console.log(chalk.yellow('Backup already exists. Use --force to overwrite.'))
-      return
-    }
-
-    // Install our wrapper as 'claude'
-    const wrapperRelativePath = path.join('..', 'wrapper', 'claude-wrapper.js')
-    const wrapperSource = validateSafePath(wrapperRelativePath, __dirname)
-
-    console.log(chalk.gray(`Installing wrapper to ${path.basename(claudePath)}`))
-    await secureCopyFile(wrapperSource, claudePath, { overwrite: true })
-    await fs.chmod(claudePath, '755')
-
-    console.log(`${chalk.green('✓')} Guardian wrapper installed!`)
-    console.log(chalk.gray('  Original claude backed up to: claude-original'))
 
     // Additional security note
-    console.log()
-    console.log(chalk.cyan('Security note:'))
-    console.log(chalk.gray('  The wrapper enforces Guardian mode when .proguardian exists'))
-    console.log(chalk.gray('  Run "proguardian check" to verify your setup'))
-  } catch (error) {
-    if (error instanceof PermissionError) {
-      console.error(chalk.red('Permission denied:'), error.message)
-      console.log()
-      console.log(chalk.yellow('Try running with sudo:'))
-      console.log(chalk.gray('  sudo proguardian install-wrapper'))
-      console.log()
-      console.log(chalk.yellow('Or use the alternative approach:'))
-      console.log(chalk.gray('  Add this to your shell profile (~/.bashrc or ~/.zshrc):'))
-      console.log(chalk.gray('  alias claude="proguardian-claude"'))
-    } else {
-      handleError(error, { exit: true, verbose: options.verbose })
+    log()
+    log(chalk.cyan('Security note:'))
+    log(chalk.gray('  The wrapper enforces Guardian mode when .proguardian exists'))
+    log(chalk.gray('  Run "proguardian check" to verify your setup'))
+
+    // Show which CLIs were wrapped
+    log()
+    log(chalk.cyan('Wrapped CLIs:'))
+    if (claudeInstalled) {
+      log(chalk.green('  ✓ claude'))
     }
+    if (geminiInstalled) {
+      log(chalk.green('  ✓ gemini'))
+    }
+  } catch (err) {
+    handleError(err, { exit: true, verbose: options.verbose })
   }
 }

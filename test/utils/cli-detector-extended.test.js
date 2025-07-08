@@ -1,43 +1,56 @@
 import { describe, it, before, after, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { promptForCLI, determineCLI, CLI_CLAUDE, CLI_GEMINI } from '../../src/utils/cli-detector.js'
+import { logger } from '../../src/utils/logger.js'
 
 describe('CLI Detector Extended Tests', () => {
-  let originalConsoleLog
-  let originalConsoleError
+  let originalLogHandler
+  let originalWarnHandler
+  let originalErrorHandler
   let consoleOutput
+  let consoleWarnings
   let consoleErrors
 
   before(() => {
-    // Mock console methods
-    originalConsoleLog = console.log
-    originalConsoleError = console.error
+    // Save original handlers
+    originalLogHandler = logger.outputHandlers.log
+    originalWarnHandler = logger.outputHandlers.warn
+    originalErrorHandler = logger.outputHandlers.error
   })
 
   after(() => {
-    // Restore console methods
-    console.log = originalConsoleLog
-    console.error = originalConsoleError
+    // Restore original handlers
+    logger.setOutputHandler('log', originalLogHandler)
+    logger.setOutputHandler('warn', originalWarnHandler)
+    logger.setOutputHandler('error', originalErrorHandler)
   })
 
   beforeEach(() => {
     consoleOutput = []
+    consoleWarnings = []
     consoleErrors = []
 
-    console.log = (...args) => {
+    // Mock the logger's output handlers
+    logger.setOutputHandler('log', (...args) => {
       consoleOutput.push(args.join(' '))
-    }
+    })
 
-    console.error = (...args) => {
+    logger.setOutputHandler('warn', (...args) => {
+      consoleWarnings.push(args.join(' '))
+    })
+
+    logger.setOutputHandler('error', (...args) => {
       consoleErrors.push(args.join(' '))
-    }
+    })
   })
 
   describe('promptForCLI()', () => {
-    it('should display prompt when both CLIs available', () => {
-      const result = promptForCLI({ claude: true, gemini: true })
+    it('should display prompt when both CLIs available', async () => {
+      const result = await promptForCLI({ claude: true, gemini: true }, false)
 
-      assert(consoleOutput.some((line) => line.includes('Multiple AI CLI tools detected')))
+      // Check warn output (which includes formatting)
+      assert(consoleWarnings.some((line) => line.includes('Multiple AI CLI tools detected')))
+      // Check log output
       assert(consoleOutput.some((line) => line.includes('1) Claude Code')))
       assert(consoleOutput.some((line) => line.includes('2) Gemini CLI')))
       assert(consoleOutput.some((line) => line.includes('Defaulting to Claude Code')))
@@ -47,7 +60,8 @@ describe('CLI Detector Extended Tests', () => {
     it('should default to Claude when only Claude available', () => {
       const result = promptForCLI({ claude: true, gemini: false })
 
-      assert(consoleOutput.some((line) => line.includes('Multiple AI CLI tools detected')))
+      // Check warn output (which includes formatting)
+      assert(consoleWarnings.some((line) => line.includes('Multiple AI CLI tools detected')))
       assert(consoleOutput.some((line) => line.includes('1) Claude Code')))
       assert(!consoleOutput.some((line) => line.includes('2) Gemini CLI')))
       assert.equal(result, CLI_CLAUDE)
@@ -80,7 +94,7 @@ describe('CLI Detector Extended Tests', () => {
 
       assert.equal(result, null)
       assert(consoleErrors.some((line) => line.includes('Invalid CLI type: invalid')))
-      assert(consoleOutput.some((line) => line.includes('Valid options are: claude, gemini')))
+      assert(consoleWarnings.some((line) => line.includes('Valid options are: claude, gemini')))
     })
 
     it('should support legacy --claude option', async () => {

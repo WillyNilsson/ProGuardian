@@ -28,13 +28,13 @@ describe('Install Wrapper Command Coverage Tests', () => {
 
       // Check for proper error handling
       assert(content.includes('PermissionError'))
-      assert(content.includes('handleError(error'))
+      assert(content.includes('handleError(err'))
       assert(content.includes('Try running with sudo'))
 
       // Check for user feedback
       assert(content.includes('Installing Guardian wrapper'))
-      assert(content.includes('Guardian wrapper installed!'))
-      assert(content.includes('Claude CLI not found'))
+      assert(content.includes('Guardian wrapper installed'))
+      assert(content.includes('No AI CLI tools found'))
     })
 
     it('should validate all paths and options', async () => {
@@ -47,7 +47,7 @@ describe('Install Wrapper Command Coverage Tests', () => {
       assert(content.includes("validateOptions('install-wrapper'"))
 
       // Ensure paths are validated
-      assert(content.includes("validateSafePath('claude-original'"))
+      assert(content.includes("validateSafePath(`${cliName}-original`"))
       assert(content.includes('validateSafePath(wrapperRelativePath'))
 
       // Check for force option handling
@@ -56,7 +56,7 @@ describe('Install Wrapper Command Coverage Tests', () => {
 
       // Check for chmod operations
       assert(content.includes("chmod(backupPath, '755')"))
-      assert(content.includes("chmod(claudePath, '755')"))
+      assert(content.includes("chmod(cliPath, '755')"))
     })
 
     it('should handle all error scenarios', async () => {
@@ -67,16 +67,16 @@ describe('Install Wrapper Command Coverage Tests', () => {
 
       // Check for which error handling
       assert(content.includes('catch {'))
-      assert(content.includes('Claude CLI not found'))
+      assert(content.includes('No AI CLI tools found'))
       assert(content.includes('npm install -g @anthropic/claude-code'))
 
       // Check for permission error handling
       assert(content.includes('instanceof PermissionError'))
-      assert(content.includes('Permission denied:'))
+      assert(content.includes('Permission denied for'))
       assert(content.includes('sudo proguardian install-wrapper'))
 
       // Check for alternative approach suggestion
-      assert(content.includes('alias claude='))
+      assert(content.includes('alias ${cliName}='))
       assert(content.includes('~/.bashrc or ~/.zshrc'))
     })
   })

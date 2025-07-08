@@ -11,23 +11,23 @@ import { log, error, warn } from '../utils/logger.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// This wrapper intercepts the 'claude' command
+// This wrapper intercepts the 'gemini' command
 
-async function runClaudeWithGuardian() {
+async function runGeminiWithGuardian() {
   try {
     // Check if Guardian is initialized in this directory
     const guardianMarkerPath = validateSafePath('.proguardian', process.cwd())
-    const claudeMdPath = validateSafePath('CLAUDE.md', process.cwd())
+    const geminiMdPath = validateSafePath('GEMINI.md', process.cwd())
 
     if (await securePathExists(guardianMarkerPath)) {
       log(chalk.cyan('🛡️  Guardian mode active\n'))
 
-      // Ensure CLAUDE.md exists and is up to date
-      if (!(await securePathExists(claudeMdPath))) {
-        warn('Restoring CLAUDE.md...')
-        const templateRelativePath = path.join('..', '..', 'templates', 'CLAUDE.md')
+      // Ensure GEMINI.md exists and is up to date
+      if (!(await securePathExists(geminiMdPath))) {
+        warn('Restoring GEMINI.md...')
+        const templateRelativePath = path.join('..', '..', 'templates', 'GEMINI.md')
         const templatePath = validateSafePath(templateRelativePath, __dirname)
-        await secureCopyFile(templatePath, claudeMdPath)
+        await secureCopyFile(templatePath, geminiMdPath)
       }
 
       // Parse and validate command line arguments
@@ -68,25 +68,25 @@ async function runClaudeWithGuardian() {
         }
       }
 
-      // Force include CLAUDE.md in context if not already included
+      // Force include GEMINI.md in context if not already included
       if (!safeArgs.includes('--context-file') && !safeArgs.includes('-c')) {
-        safeArgs.push('--context-file', 'CLAUDE.md')
+        safeArgs.push('--context-file', 'GEMINI.md')
       } else {
-        // Check if CLAUDE.md is already in context
-        let hasClaudeMd = false
+        // Check if GEMINI.md is already in context
+        let hasGeminiMd = false
         for (let i = 0; i < safeArgs.length; i++) {
           if (
             (safeArgs[i] === '--context-file' || safeArgs[i] === '-c') &&
             i + 1 < safeArgs.length &&
-            safeArgs[i + 1] === 'CLAUDE.md'
+            safeArgs[i + 1] === 'GEMINI.md'
           ) {
-            hasClaudeMd = true
+            hasGeminiMd = true
             break
           }
         }
 
-        if (!hasClaudeMd) {
-          safeArgs.push('--context-file', 'CLAUDE.md')
+        if (!hasGeminiMd) {
+          safeArgs.push('--context-file', 'GEMINI.md')
         }
       }
 
@@ -104,36 +104,36 @@ CRITICAL: You cannot proceed to next step until current review passes
 FORBIDDEN: Skipping reviews, proceeding with issues, placeholder code
 REQUIRED: Show evidence of each review (checklist items checked)
 
-Each review must check relevant items from CLAUDE.md quality checklist.`
+Each review must check relevant items from GEMINI.md quality checklist.`
       
       const env = {
         ...process.env,
-        CLAUDE_GUARDIAN_MODE: 'active',
-        CLAUDE_SYSTEM_PROMPT_PREPEND: guardianEnforcement,
+        GEMINI_GUARDIAN_MODE: 'active',
+        GEMINI_SYSTEM_PROMPT_PREPEND: guardianEnforcement,
       }
 
-      // Launch real Claude with modified args using execFile for safety
-      const claudeOriginal = spawn('claude-original', safeArgs, {
+      // Launch real Gemini with modified args using execFile for safety
+      const geminiOriginal = spawn('gemini-original', safeArgs, {
         stdio: 'inherit',
         env: env,
         shell: false, // Prevent shell injection
       })
 
-      claudeOriginal.on('error', (err) => {
+      geminiOriginal.on('error', (err) => {
         if (err.code === 'ENOENT') {
-          error('Error: claude-original not found')
+          error('Error: gemini-original not found')
           warn('Run: proguardian install-wrapper')
         } else {
-          error(`Error launching Claude: ${err.message}`)
+          error(`Error launching Gemini: ${err.message}`)
         }
         process.exit(1)
       })
 
-      claudeOriginal.on('exit', (code) => {
+      geminiOriginal.on('exit', (code) => {
         process.exit(code || 0)
       })
     } else {
-      // No Guardian mode, run Claude normally with safety checks
+      // No Guardian mode, run Gemini normally with safety checks
       const args = process.argv.slice(2)
 
       // Basic argument validation even in normal mode
@@ -151,22 +151,22 @@ Each review must check relevant items from CLAUDE.md quality checklist.`
         }
       }
 
-      const claude = spawn('claude-original', args, {
+      const gemini = spawn('gemini-original', args, {
         stdio: 'inherit',
         shell: false, // Prevent shell injection
       })
 
-      claude.on('error', (err) => {
+      gemini.on('error', (err) => {
         if (err.code === 'ENOENT') {
-          error('Error: claude-original not found')
-          warn('This wrapper requires the original Claude CLI')
+          error('Error: gemini-original not found')
+          warn('This wrapper requires the original Gemini CLI')
         } else {
-          error(`Error launching Claude: ${err.message}`)
+          error(`Error launching Gemini: ${err.message}`)
         }
         process.exit(1)
       })
 
-      claude.on('exit', (code) => {
+      gemini.on('exit', (code) => {
         process.exit(code || 0)
       })
     }
@@ -175,36 +175,7 @@ Each review must check relevant items from CLAUDE.md quality checklist.`
   }
 }
 
-// Option 3: Create a proxy that modifies the AI's responses
-// This is kept as a comment for potential future implementation
-// async function createGuardianProxy() {
-//   // This would require deeper integration:
-//   // 1. Intercept Claude's API calls
-//   // 2. Modify system prompts before sending
-//   // 3. Potentially filter/modify responses
-//
-//   // Example pseudo-code:
-//   /*
-//   const originalFetch = global.fetch;
-//   global.fetch = async (url, options) => {
-//     if (url.includes('anthropic.com/messages')) {
-//       const body = JSON.parse(options.body);
-//
-//       // Prepend Guardian instructions to every message
-//       if (!body.system) {
-//         body.system = '';
-//       }
-//       body.system = GUARDIAN_PROMPT + '\n\n' + body.system;
-//
-//       options.body = JSON.stringify(body);
-//     }
-//
-//     return originalFetch(url, options);
-//   };
-//   */
-// }
-
-runClaudeWithGuardian().catch((err) => {
+runGeminiWithGuardian().catch((err) => {
   error(`Fatal error: ${err.message}`)
   process.exit(1)
 })

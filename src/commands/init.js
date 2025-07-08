@@ -11,6 +11,7 @@ import {
 } from '../utils/file-security.js'
 import { validateOptions, validateSafePath } from '../utils/validation.js'
 import { handleError } from '../utils/errors.js'
+import { log, success, warn } from '../utils/logger.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -46,11 +47,11 @@ export async function initCommand(options = {}, deps = {}) {
 
       // Check if Guardian is already added
       if (existingContent.includes(guardianMarker)) {
-        console.log(chalk.yellow(`⚠️  Guardian mode is already active in ${targetFilename}`))
+        warn(`Guardian mode is already active in ${targetFilename}`)
         if (!options.force) {
           return
         }
-        console.log(chalk.yellow('   Reinstalling Guardian section...'))
+        warn('   Reinstalling Guardian section...')
         // Remove existing Guardian section
         const guardianStart = existingContent.indexOf(guardianMarker)
         existingContent = existingContent.substring(0, guardianStart).trim()
@@ -74,17 +75,17 @@ ${guardianMarker}
 ${guardianContent}`
 
       await secureWriteFile(targetPath, enhancedContent)
-      console.log(`${chalk.green('✓')} Added Guardian mode to existing ${targetFilename}`)
+      success(`Added Guardian mode to existing ${targetFilename}`)
     } else {
       // No target file exists, suggest running CLI init first
-      console.log(chalk.yellow(`No ${targetFilename} found in this project.`))
-      console.log()
-      console.log('Recommended approach:')
+      warn(`No ${targetFilename} found in this project.`)
+      log()
+      log('Recommended approach:')
       const cliCommand = cliType === CLI_CLAUDE ? 'claude' : 'gemini'
-      console.log(`  1. Run ${chalk.cyan(`${cliCommand} init`)} to analyze your project`)
-      console.log(`  2. Run ${chalk.cyan('proguardian init')} to add Guardian mode`)
-      console.log()
-      console.log(
+      log(`  1. Run ${chalk.cyan(`${cliCommand} init`)} to analyze your project`)
+      log(`  2. Run ${chalk.cyan('proguardian init')} to add Guardian mode`)
+      log()
+      log(
         `Or use ${chalk.cyan('proguardian init --force')} to create Guardian-only ${targetFilename}`,
       )
 
@@ -106,7 +107,7 @@ ${guardianContent}`
 
       // Write the complete file
       await secureWriteFile(targetPath, fullContent)
-      console.log(`${chalk.green('✓')} Created Guardian-only ${targetFilename}`)
+      success(`Created Guardian-only ${targetFilename}`)
     }
 
     // Create .proguardian marker file
@@ -122,15 +123,15 @@ ${guardianContent}`
 
     await secureWriteJSON(markerPath, markerContent)
 
-    console.log(`${chalk.green('✓')} Guardian supervision active!`)
-    console.log()
-    console.log(chalk.cyan('What happened:'))
-    console.log(`  • Guardian instructions added to ${targetFilename}`)
-    console.log('  • Project knowledge preserved')
-    console.log('  • Quality gates now enforced')
-    console.log()
-    console.log(chalk.green('Guardian is now protecting your codebase! 🛡️'))
-  } catch (error) {
-    handleError(error, { exit: true, verbose: options.verbose })
+    success('Guardian supervision active!')
+    log()
+    log(chalk.cyan('What happened:'))
+    log(`  • Guardian instructions added to ${targetFilename}`)
+    log('  • Project knowledge preserved')
+    log('  • Quality gates now enforced')
+    log()
+    log(chalk.green('Guardian is now protecting your codebase! 🛡️'))
+  } catch (err) {
+    handleError(err, { exit: true, verbose: options.verbose })
   }
 }

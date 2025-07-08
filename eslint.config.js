@@ -127,7 +127,7 @@ export default [
     files: ['src/commands/**/*.js', 'src/wrapper/**/*.js'],
     rules: {
       'no-console': 'off',
-      'max-lines-per-function': ['error', 150], // Allow longer functions for complex CLI commands
+      'max-lines-per-function': ['error', 200], // Allow longer functions for complex CLI commands and wrappers
       complexity: ['error', 30], // Allow higher complexity for CLI commands
       'max-depth': ['error', 5], // Allow deeper nesting for CLI command logic
       'no-process-exit': 'off',
