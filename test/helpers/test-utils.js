@@ -42,7 +42,7 @@ export async function cleanupTestDir(dirPath) {
         process.chdir(os.tmpdir()) // Go to temp dir root
       } catch {
         try {
-          process.chdir(process.env.HOME || '/') // Go home
+          process.chdir(os.homedir()) // Go home (cross-platform)
         } catch {
           // Can't change directory, skip cleanup
           return
@@ -194,7 +194,7 @@ export function changeCwd(newCwd) {
     } catch (error) {
       // If we can't restore to original, try to get to a safe directory
       try {
-        process.chdir(process.env.HOME || '/')
+        process.chdir(os.homedir())
       } catch {
         // If all else fails, stay where we are
       }
@@ -228,7 +228,7 @@ export async function createTestContext() {
           process.chdir(originalCwd)
         } catch {
           try {
-            process.chdir(process.env.HOME || '/')
+            process.chdir(os.homedir())
           } catch {
             // Can't change directory
           }

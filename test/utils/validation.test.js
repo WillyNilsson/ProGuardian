@@ -23,7 +23,15 @@ describe('Validation Utils', () => {
 
     it('should accept valid paths within base directory', async () => {
       testDir = await setupTestDir()
-      const validPaths = ['file.txt', 'subdir/file.txt', './file.txt', 'deep/nested/path/file.txt']
+      const validPaths = [
+        'file.txt',
+        'subdir/file.txt',
+        './file.txt',
+        'deep/nested/path/file.txt',
+        // Windows-style paths (without traversal)
+        'subdir\\file.txt',
+        'deep\\nested\\path\\file.txt'
+      ]
 
       for (const validPath of validPaths) {
         const result = validateSafePath(validPath, testDir)
@@ -48,7 +56,7 @@ describe('Validation Utils', () => {
         'file.txt&ls',
         'file.txt>output.txt',
         'file.txt<input.txt',
-        'file\\..\\..\\windows\\system32',
+        'file\\..\\..\\windows\\system32', // Should reject due to .. traversal
       ]
 
       for (const maliciousPath of maliciousPaths) {

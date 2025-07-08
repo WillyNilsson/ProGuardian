@@ -90,14 +90,30 @@ export function validateSafePath(targetPath, basePath = process.cwd()) {
   const resolvedBase = path.resolve(basePath)
 
   // Ensure the target is within the base directory
-  if (!resolvedTarget.startsWith(resolvedBase)) {
+  // On Windows, perform case-insensitive comparison
+  const isWindows = process.platform === 'win32'
+  const targetToCheck = isWindows ? resolvedTarget.toLowerCase() : resolvedTarget
+  const baseToCheck = isWindows ? resolvedBase.toLowerCase() : resolvedBase
+  
+  // Ensure base path ends with separator for accurate prefix check
+  const baseWithSep = baseToCheck.endsWith(path.sep) ? baseToCheck : baseToCheck + path.sep
+  
+  if (!targetToCheck.startsWith(baseToCheck) || 
+      (targetToCheck !== baseToCheck && !targetToCheck.startsWith(baseWithSep))) {
     throw new PathTraversalError(targetPath)
   }
 
   // Additional checks for suspicious patterns
-  const suspicious = ['..', './', '~', '$', '`', '|', ';', '&', '>', '<', '\\']
+  // Note: We allow backslashes as they're valid path separators on Windows
+  const suspicious = ['..', '~', '$', '`', '|', ';', '&', '>', '<']
   const normalizedPath = path.normalize(targetPath)
 
+  // Check for path traversal patterns
+  if (normalizedPath.includes('..')) {
+    throw new PathTraversalError(targetPath)
+  }
+
+  // Check for other suspicious patterns
   for (const pattern of suspicious) {
     if (normalizedPath.includes(pattern)) {
       throw new PathTraversalError(targetPath)

@@ -3,12 +3,14 @@
  * These provide specific error types for better error handling and security
  */
 
+import path from 'path'
+
 /**
  * Sanitize error messages to prevent information disclosure
  */
 function sanitizeErrorMessage(message) {
-  // Remove absolute paths
-  let safe = message.replace(/\/[\w\-/]+\//g, '<path>/')
+  // Remove absolute paths (both Unix and Windows style)
+  let safe = message.replace(/[/\\][\w\-/\\]+[/\\]/g, '<path>/')
 
   // Remove potential sensitive data patterns
   safe = safe.replace(/\b\d{4,}\b/g, '<id>') // IDs
@@ -46,9 +48,10 @@ export class ValidationError extends ProGuardianError {
 }
 
 export class PermissionError extends ProGuardianError {
-  constructor(operation, path) {
+  constructor(operation, filePath) {
     // Don't expose full paths in error messages
-    const safePath = path ? path.split('/').pop() : 'file'
+    // Use path.basename for cross-platform compatibility
+    const safePath = filePath ? path.basename(filePath) : 'file'
     const message = `Permission denied: Cannot ${operation} ${safePath}`
     super(message, 'PERMISSION_ERROR')
     this.operation = operation
