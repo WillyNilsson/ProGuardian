@@ -71,6 +71,57 @@ export class CommandInjectionError extends SecurityError {
   }
 }
 
+export class FileOperationError extends ProGuardianError {
+  constructor(operation, filePath, details) {
+    const safePath = filePath ? path.basename(filePath) : 'file'
+    const message = `File operation failed: Cannot ${operation} ${safePath}${details ? ': ' + details : ''}`
+    super(message, 'FILE_OPERATION_ERROR')
+    this.operation = operation
+    this.filePath = filePath
+    this.details = details
+  }
+}
+
+export class CLINotFoundError extends ProGuardianError {
+  constructor(cliName) {
+    super(`${cliName} CLI not found. Please install it first.`, 'CLI_NOT_FOUND')
+    this.cliName = cliName
+  }
+}
+
+/**
+ * Format error for display
+ */
+export function formatError(error, verbose = false) {
+  if (!error) {
+    return 'Unknown error'
+  }
+
+  if (typeof error === 'string') {
+    return error
+  }
+
+  if (typeof error === 'number') {
+    return String(error)
+  }
+
+  let result = error.message || 'Unknown error'
+
+  if (error.code) {
+    result = `[${error.code}] ${result}`
+  }
+
+  if (verbose && error.cause) {
+    result += '\nCaused by: ' + formatError(error.cause, verbose)
+  }
+
+  if (verbose && error.stack && process.env.NODE_ENV === 'development') {
+    result += '\n' + error.stack
+  }
+
+  return result
+}
+
 /**
  * Handle errors consistently across the application
  */
