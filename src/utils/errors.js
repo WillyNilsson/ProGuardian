@@ -8,14 +8,45 @@ import path from 'path'
 /**
  * Sanitize error messages to prevent information disclosure
  */
-function sanitizeErrorMessage(message) {
-  // Remove absolute paths (both Unix and Windows style)
-  let safe = message.replace(/[/\\][\w\-/\\]+[/\\]/g, '<path>/')
+export function sanitizeErrorMessage(message) {
+  if (typeof message !== 'string') {
+    return String(message)
+  }
+
+  let safe = message
+
+  // Remove IPv6 addresses FIRST (before ID replacement)
+  // Full IPv6 pattern
+  safe = safe.replace(/([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}/g, '<ip>')
+  // Compressed IPv6 patterns
+  safe = safe.replace(/([0-9a-fA-F]{1,4}:){1,7}:/g, '<ip>')
+  safe = safe.replace(/:([0-9a-fA-F]{1,4}:){1,7}/g, '<ip>')
+  // Any remaining IPv6-like patterns
+  safe = safe.replace(/([0-9a-fA-F]{1,4}:){2,}[0-9a-fA-F]{0,4}/g, '<ip>')
+
+  // Remove paths - handle relative paths FIRST to avoid partial matches
+  // Relative paths: ../path or ./path (must have at least one slash)
+  safe = safe.replace(/\.{1,2}([\\/][^\s"'<>|]*)+/g, '<path>')
+  
+  // Then handle absolute paths
+  // Windows absolute paths: C:\path or C:/path
+  safe = safe.replace(/[a-zA-Z]:[\\//][^\s"'<>|]+/g, '<path>')
+  // Unix absolute paths: /path (but not if it's already <path>)
+  safe = safe.replace(/(?<!<path>)\/[^\s"'<>|]+/g, '<path>')
+  // Windows UNC paths: \\server\share
+  safe = safe.replace(/\\\\[^\s"'<>|]+/g, '<path>')
+
+  // Remove UUIDs BEFORE other ID replacements
+  safe = safe.replace(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g, '<uuid>')
 
   // Remove potential sensitive data patterns
-  safe = safe.replace(/\b\d{4,}\b/g, '<id>') // IDs
+  safe = safe.replace(/\b\d{4,}\b/g, '<id>') // IDs (4+ digits)
   safe = safe.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '<email>') // Emails
-  safe = safe.replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '<ip>') // IPs
+  safe = safe.replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '<ip>') // IPv4 addresses
+  
+  // Remove potential tokens/secrets (long hex strings, base64-like strings)
+  safe = safe.replace(/\b[a-fA-F0-9]{32,}\b/g, '<token>') // Hex tokens (32+ chars)
+  safe = safe.replace(/[A-Za-z0-9+/]{20,}={0,2}/g, '<token>') // Base64-like tokens
 
   return safe
 }
@@ -39,11 +70,17 @@ export class SecurityError extends ProGuardianError {
 }
 
 export class ValidationError extends ProGuardianError {
-  constructor(field, value, requirement) {
-    const message = `Invalid ${field}: ${requirement}`
+  constructor(field, requirement, value = undefined) {
+    // Include sanitized value in message if provided
+    let message = `Invalid ${field}: ${requirement}`
+    if (value !== undefined) {
+      const sanitizedValue = sanitizeErrorMessage(String(value))
+      message += ` (got: ${sanitizedValue})`
+    }
     super(message, 'VALIDATION_ERROR')
     this.field = field
     this.requirement = requirement
+    this.value = value
   }
 }
 
@@ -66,8 +103,9 @@ export class PathTraversalError extends SecurityError {
 }
 
 export class CommandInjectionError extends SecurityError {
-  constructor(_command) {
+  constructor(command) {
     super('Invalid command: Potentially unsafe characters detected')
+    this.command = command // Store for debugging, but don't expose in message
   }
 }
 

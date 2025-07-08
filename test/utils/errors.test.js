@@ -6,8 +6,12 @@ import {
   FileOperationError,
   CLINotFoundError,
   PermissionError,
+  PathTraversalError,
+  CommandInjectionError,
+  ProGuardianError,
   handleError,
-  formatError
+  formatError,
+  sanitizeErrorMessage
 } from '../../src/utils/errors.js'
 
 describe('Error Utilities Tests', () => {
@@ -45,113 +49,268 @@ describe('Error Utilities Tests', () => {
   })
 
   describe('Custom Error Classes', () => {
-    it.skip('ValidationError should have correct properties', () => {
-      const error = new ValidationError('Invalid input', 'username')
+    it('ValidationError should have correct properties', () => {
+      const error = new ValidationError('username', 'must be alphanumeric')
       
       assert(error instanceof Error)
+      assert(error instanceof ProGuardianError)
       assert(error instanceof ValidationError)
       assert.equal(error.name, 'ValidationError')
-      assert.equal(error.message, 'Invalid input')
+      assert.equal(error.message, 'Invalid username: must be alphanumeric')
       assert.equal(error.field, 'username')
+      assert.equal(error.requirement, 'must be alphanumeric')
       assert.equal(error.code, 'VALIDATION_ERROR')
+      assert(error.stack)
     })
 
-    it.skip('SecurityError should have correct properties', () => {
-      const error = new SecurityError('Access denied', 'path-traversal')
+    it('ValidationError should include sanitized value when provided', () => {
+      const error = new ValidationError('email', 'must be valid', 'user@example.com')
+      
+      assert.equal(error.message, 'Invalid email: must be valid (got: <email>)')
+      assert.equal(error.value, 'user@example.com')
+    })
+
+    it('SecurityError should have correct properties', () => {
+      const error = new SecurityError('Access denied to /etc/passwd', { type: 'path-traversal' })
       
       assert(error instanceof Error)
+      assert(error instanceof ProGuardianError)
       assert(error instanceof SecurityError)
       assert.equal(error.name, 'SecurityError')
-      assert.equal(error.message, 'Access denied')
-      assert.equal(error.violation, 'path-traversal')
+      assert.equal(error.message, 'Access denied to <path>')
+      assert.deepEqual(error.details, { type: 'path-traversal' })
       assert.equal(error.code, 'SECURITY_ERROR')
     })
 
-    it.skip('FileOperationError should have correct properties', () => {
+    it('FileOperationError should have correct properties', () => {
       const error = new FileOperationError('read', '/test/file.txt', 'File not found')
       
       assert(error instanceof Error)
+      assert(error instanceof ProGuardianError)
       assert(error instanceof FileOperationError)
       assert.equal(error.name, 'FileOperationError')
-      assert.equal(error.message, 'Failed to read /test/file.txt: File not found')
+      assert.equal(error.message, 'File operation failed: Cannot read file.txt: File not found')
       assert.equal(error.operation, 'read')
-      assert.equal(error.path, '/test/file.txt')
+      assert.equal(error.filePath, '/test/file.txt')
+      assert.equal(error.details, 'File not found')
       assert.equal(error.code, 'FILE_OPERATION_ERROR')
     })
 
-    it.skip('CLINotFoundError should have correct properties', () => {
+    it('CLINotFoundError should have correct properties', () => {
       const error = new CLINotFoundError('claude')
       
       assert(error instanceof Error)
+      assert(error instanceof ProGuardianError)
       assert(error instanceof CLINotFoundError)
       assert.equal(error.name, 'CLINotFoundError')
-      assert.equal(error.message, 'CLI tool "claude" not found in PATH')
-      assert.equal(error.cli, 'claude')
+      assert.equal(error.message, 'claude CLI not found. Please install it first.')
+      assert.equal(error.cliName, 'claude')
       assert.equal(error.code, 'CLI_NOT_FOUND')
     })
 
-    it.skip('PermissionError should have correct properties', () => {
+    it('PermissionError should have correct properties', () => {
       const error = new PermissionError('write', '/protected/file')
       
       assert(error instanceof Error)
+      assert(error instanceof ProGuardianError)
       assert(error instanceof PermissionError)
       assert.equal(error.name, 'PermissionError')
-      assert.equal(error.message, 'Permission denied to write /protected/file')
+      assert.equal(error.message, 'Permission denied: Cannot write file')
       assert.equal(error.operation, 'write')
-      assert.equal(error.resource, '/protected/file')
       assert.equal(error.code, 'PERMISSION_ERROR')
+    })
+
+    it('PathTraversalError should have correct properties', () => {
+      const error = new PathTraversalError('../../../etc/passwd')
+      
+      assert(error instanceof Error)
+      assert(error instanceof ProGuardianError)
+      assert(error instanceof SecurityError)
+      assert(error instanceof PathTraversalError)
+      assert.equal(error.name, 'PathTraversalError')
+      assert.equal(error.message, 'Invalid path: Path traversal attempt detected')
+      assert.equal(error.attemptedPath, '../../../etc/passwd')
+      assert.equal(error.code, 'SECURITY_ERROR')
+    })
+
+    it('CommandInjectionError should have correct properties', () => {
+      const error = new CommandInjectionError('rm -rf /')
+      
+      assert(error instanceof Error)
+      assert(error instanceof ProGuardianError)
+      assert(error instanceof SecurityError)
+      assert(error instanceof CommandInjectionError)
+      assert.equal(error.name, 'CommandInjectionError')
+      assert.equal(error.message, 'Invalid command: Potentially unsafe characters detected')
+      assert.equal(error.command, 'rm -rf /')
+      assert.equal(error.code, 'SECURITY_ERROR')
+    })
+
+    it('Error.captureStackTrace should work correctly', () => {
+      const error = new ValidationError('field', 'requirement')
+      const stack = error.stack
+      
+      assert(stack)
+      assert(stack.includes('ValidationError'))
+      // Stack should not include the constructor itself
+      assert(!stack.includes('Error.captureStackTrace'))
     })
   })
 
-  describe.skip('handleError function', () => {
+  describe('sanitizeErrorMessage function', () => {
+    it('should sanitize Unix paths', () => {
+      assert.equal(
+        sanitizeErrorMessage('/home/user/secret/file.txt'),
+        '<path>'
+      )
+      assert.equal(
+        sanitizeErrorMessage('Failed to read /etc/passwd'),
+        'Failed to read <path>'
+      )
+    })
+
+    it('should sanitize Windows paths', () => {
+      assert.equal(
+        sanitizeErrorMessage('C:\\Users\\Admin\\Documents\\secret.txt'),
+        '<path>'
+      )
+      assert.equal(
+        sanitizeErrorMessage('Cannot access C:/Windows/System32/config'),
+        'Cannot access <path>'
+      )
+    })
+
+    it('should sanitize network paths', () => {
+      assert.equal(
+        sanitizeErrorMessage('\\\\server\\share\\folder\\file.txt'),
+        '<path>'
+      )
+    })
+
+    it('should sanitize path traversal attempts', () => {
+      assert.equal(
+        sanitizeErrorMessage('../../../etc/passwd'),
+        '<path>'
+      )
+      // Windows path traversal  
+      const windowsPath = '..\\..\\..\\Windows\\System32'
+      const result = sanitizeErrorMessage(windowsPath)
+      assert.equal(result, '<path>')
+    })
+
+    it('should sanitize email addresses', () => {
+      assert.equal(
+        sanitizeErrorMessage('Invalid email: user@example.com'),
+        'Invalid email: <email>'
+      )
+      assert.equal(
+        sanitizeErrorMessage('Send to admin.user+tag@company.co.uk'),
+        'Send to <email>'
+      )
+    })
+
+    it('should sanitize IP addresses', () => {
+      assert.equal(
+        sanitizeErrorMessage('Connection from 192.168.1.1 failed'),
+        'Connection from <ip> failed'
+      )
+      assert.equal(
+        sanitizeErrorMessage('IPv6: 2001:0db8:85a3:0000:0000:8a2e:0370:7334'),
+        'IPv6: <ip>'
+      )
+    })
+
+    it('should sanitize IDs and tokens', () => {
+      assert.equal(
+        sanitizeErrorMessage('User ID: 12345678'),
+        'User ID: <id>'
+      )
+      assert.equal(
+        sanitizeErrorMessage('Token: a1b2c3d4e5f6789abcdef123456789012'),
+        'Token: <token>'
+      )
+      assert.equal(
+        sanitizeErrorMessage('Key: dGVzdCBiYXNlNjQgZW5jb2RlZCBzdHJpbmc='),
+        'Key: <token>'
+      )
+      // Test UUID sanitization
+      assert.equal(
+        sanitizeErrorMessage('ID: 550e8400-e29b-41d4-a716-446655440000'),
+        'ID: <uuid>'
+      )
+    })
+
+    it('should handle multiple sensitive items', () => {
+      const input = 'User user@example.com from 192.168.1.1 accessed /home/user/data'
+      const expected = 'User <email> from <ip> accessed <path>'
+      assert.equal(sanitizeErrorMessage(input), expected)
+    })
+
+    it('should handle non-string inputs', () => {
+      assert.equal(sanitizeErrorMessage(null), 'null')
+      assert.equal(sanitizeErrorMessage(undefined), 'undefined')
+      assert.equal(sanitizeErrorMessage(123), '123')
+      assert.equal(sanitizeErrorMessage({ key: 'value' }), '[object Object]')
+    })
+
+    it('should not over-sanitize normal text', () => {
+      assert.equal(
+        sanitizeErrorMessage('Normal error message'),
+        'Normal error message'
+      )
+      assert.equal(
+        sanitizeErrorMessage('Port 80 is standard'),
+        'Port 80 is standard'
+      )
+    })
+  })
+
+  describe('handleError function', () => {
     it('should handle ValidationError appropriately', () => {
-      const error = new ValidationError('Invalid email format', 'email')
+      const error = new ValidationError('email', 'must be valid format')
       
       handleError(error, { exit: false })
       
-      assert(consoleErrors.some(line => line.includes('Validation Error:')))
-      assert(consoleErrors.some(line => line.includes('Invalid email format')))
-      assert(consoleErrors.some(line => line.includes('Field: email')))
+      assert(consoleErrors.some(line => line.includes('Validation failed:')))
+      assert(consoleErrors.some(line => line.includes('Invalid email: must be valid format')))
       assert(!exitCalled)
     })
 
-    it.skip('should handle SecurityError with security message', () => {
-      const error = new SecurityError('Path traversal detected', 'path-traversal')
+    it('should handle SecurityError with security message', () => {
+      const error = new SecurityError('Path traversal detected in /etc/passwd', { type: 'path-traversal' })
       
       handleError(error, { exit: false })
       
-      assert(consoleErrors.some(line => line.includes('Security Violation:')))
-      assert(consoleErrors.some(line => line.includes('Path traversal detected')))
-      assert(consoleErrors.some(line => line.includes('This appears to be a security issue')))
+      assert(consoleErrors.some(line => line.includes('Security violation:')))
+      assert(consoleErrors.some(line => line.includes('Path traversal detected in <path>')))
+      assert(!exitCalled)
     })
 
-    it.skip('should handle FileOperationError with context', () => {
+    it('should handle FileOperationError with context', () => {
       const error = new FileOperationError('write', '/test/file.txt', 'Permission denied')
       
       handleError(error, { exit: false })
       
-      assert(consoleErrors.some(line => line.includes('File Operation Error:')))
-      assert(consoleErrors.some(line => line.includes('Failed to write /test/file.txt')))
+      assert(consoleErrors.some(line => line.includes('FILE_OPERATION_ERROR:')))
+      assert(consoleErrors.some(line => line.includes('Cannot write file.txt')))
     })
 
-    it.skip('should handle CLINotFoundError with installation instructions', () => {
+    it('should handle CLINotFoundError', () => {
       const error = new CLINotFoundError('claude')
       
       handleError(error, { exit: false })
       
-      assert(consoleErrors.some(line => line.includes('CLI Not Found:')))
-      assert(consoleErrors.some(line => line.includes('claude')))
-      assert(consoleErrors.some(line => line.includes('installation instructions')))
+      assert(consoleErrors.some(line => line.includes('CLI_NOT_FOUND:')))
+      assert(consoleErrors.some(line => line.includes('claude CLI not found')))
     })
 
-    it.skip('should handle PermissionError with sudo suggestion', () => {
+    it('should handle PermissionError', () => {
       const error = new PermissionError('write', '/usr/local/bin/claude')
       
       handleError(error, { exit: false })
       
-      assert(consoleErrors.some(line => line.includes('Permission Error:')))
-      assert(consoleErrors.some(line => line.includes('Permission denied')))
-      assert(consoleErrors.some(line => line.includes('Try running with sudo')))
+      assert(consoleErrors.some(line => line.includes('Permission denied:')))
+      assert(consoleErrors.some(line => line.includes('Cannot write claude')))
     })
 
     it('should handle generic Error', () => {
@@ -159,18 +318,32 @@ describe('Error Utilities Tests', () => {
       
       handleError(error, { exit: false })
       
-      assert(consoleErrors.some(line => line.includes('Error:')))
-      assert(consoleErrors.some(line => line.includes('Something went wrong')))
+      assert(consoleErrors.some(line => line.includes('An unexpected error occurred')))
     })
 
-    it('should show stack trace in verbose mode', () => {
-      const error = new Error('Test error')
-      error.stack = 'Error: Test error\n    at test.js:10:5'
+    it('should show error details in development mode', () => {
+      const originalEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = 'development'
       
+      const error = new Error('Dev error')
+      handleError(error, { exit: false })
+      
+      assert(consoleErrors.some(line => line.includes('Dev error')))
+      
+      process.env.NODE_ENV = originalEnv
+    })
+
+    it('should show security error details in verbose development mode', () => {
+      const originalEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = 'development'
+      
+      const error = new SecurityError('Hack attempt', { ip: '192.168.1.1', path: '/etc/passwd' })
       handleError(error, { exit: false, verbose: true })
       
-      assert(consoleErrors.some(line => line.includes('Stack trace:')))
-      assert(consoleErrors.some(line => line.includes('at test.js:10:5')))
+      assert(consoleErrors.some(line => line.includes('Security violation:')))
+      assert(consoleErrors.some(line => line.includes('Details:')))
+      
+      process.env.NODE_ENV = originalEnv
     })
 
     it('should exit when exit option is true', () => {
@@ -190,136 +363,185 @@ describe('Error Utilities Tests', () => {
       assert(!exitCalled)
     })
 
-    it('should handle errors with cause', () => {
-      const cause = new Error('Root cause')
-      const error = new Error('High level error', { cause })
+    it('should not show stack trace in production', () => {
+      const originalEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = 'production'
+      
+      const error = new Error('Production error')
+      error.stack = 'Error: Production error\n    at test.js:10:5'
       
       handleError(error, { exit: false, verbose: true })
       
-      assert(consoleErrors.some(line => line.includes('High level error')))
-      assert(consoleErrors.some(line => line.includes('Caused by:')))
-      assert(consoleErrors.some(line => line.includes('Root cause')))
+      assert(consoleErrors.some(line => line.includes('An unexpected error occurred')))
+      assert(!consoleErrors.some(line => line.includes('at test.js:10:5')))
+      
+      process.env.NODE_ENV = originalEnv
     })
 
     it('should handle null/undefined errors gracefully', () => {
       handleError(null, { exit: false })
-      assert(consoleErrors.some(line => line.includes('Unknown error occurred')))
+      assert(consoleErrors.some(line => line.includes('An unexpected error occurred')))
 
       consoleErrors = []
       
       handleError(undefined, { exit: false })
-      assert(consoleErrors.some(line => line.includes('Unknown error occurred')))
+      assert(consoleErrors.some(line => line.includes('An unexpected error occurred')))
     })
 
-    it('should handle errors with custom codes', () => {
-      const error = new Error('Custom error')
-      error.code = 'ENOENT'
+    it('should handle ProGuardianError with code', () => {
+      const error = new ValidationError('username', 'too short')
       
       handleError(error, { exit: false })
       
-      assert(consoleErrors.some(line => line.includes('Code: ENOENT')))
+      assert(consoleErrors.some(line => line.includes('Validation failed:')))
+      assert(consoleErrors.some(line => line.includes('Invalid username: too short')))
     })
   })
 
-  describe.skip('formatError function', () => {
+  describe('formatError function', () => {
     it('should format error message properly', () => {
       const error = new Error('Test error message')
       const formatted = formatError(error)
       
-      assert(formatted.includes('Test error message'))
+      assert.equal(formatted, 'Test error message')
     })
 
     it('should include error code if present', () => {
-      const error = new Error('Test error')
-      error.code = 'TEST_CODE'
+      const error = new ProGuardianError('Test error', 'TEST_CODE')
       
       const formatted = formatError(error)
       
-      assert(formatted.includes('Code: TEST_CODE'))
+      assert.equal(formatted, '[TEST_CODE] Test error')
     })
 
-    it('should include field for ValidationError', () => {
-      const error = new ValidationError('Invalid value', 'testField')
-      const formatted = formatError(error)
+    it('should handle various input types', () => {
+      assert.equal(formatError('String error'), 'String error')
+      assert.equal(formatError(123), '123')
+      assert.equal(formatError(null), 'Unknown error')
+      assert.equal(formatError(undefined), 'Unknown error')
+      assert.equal(formatError({ message: 'Object with message' }), 'Object with message')
+      assert.equal(formatError({}), 'Unknown error')
+    })
+
+    it('should handle errors with cause in verbose mode', () => {
+      const cause = new Error('Root cause')
+      const error = new Error('Main error')
+      error.cause = cause
       
-      assert(formatted.includes('Field: testField'))
-    })
-
-    it('should include operation for FileOperationError', () => {
-      const error = new FileOperationError('read', '/test/path', 'Not found')
-      const formatted = formatError(error)
+      const formatted = formatError(error, true)
       
-      assert(formatted.includes('Operation: read'))
-      assert(formatted.includes('Path: /test/path'))
+      assert(formatted.includes('Main error'))
+      assert(formatted.includes('Caused by: Root cause'))
     })
 
-    it('should include stack trace in verbose mode', () => {
+    it('should include stack trace in verbose mode for development', () => {
+      const originalEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = 'development'
+      
       const error = new Error('Test error')
       error.stack = 'Error: Test error\n    at file.js:10:5\n    at other.js:20:10'
       
       const formatted = formatError(error, true)
       
-      assert(formatted.includes('Stack trace:'))
+      assert(formatted.includes('Test error'))
       assert(formatted.includes('at file.js:10:5'))
-      assert(formatted.includes('at other.js:20:10'))
+      
+      process.env.NODE_ENV = originalEnv
     })
 
-    it('should format errors with cause', () => {
-      const cause = new Error('Root cause')
-      const error = new Error('Main error', { cause })
+    it('should not include stack trace in production', () => {
+      const originalEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = 'production'
+      
+      const error = new Error('Test error')
+      error.stack = 'Error: Test error\n    at file.js:10:5'
       
       const formatted = formatError(error, true)
       
-      assert(formatted.includes('Main error'))
-      assert(formatted.includes('Caused by:'))
-      assert(formatted.includes('Root cause'))
+      assert.equal(formatted, 'Test error')
+      assert(!formatted.includes('at file.js:10:5'))
+      
+      process.env.NODE_ENV = originalEnv
     })
 
-    it('should handle circular references in error objects', () => {
-      const error = new Error('Circular error')
-      error.circular = error // Create circular reference
+    it('should handle nested causes', () => {
+      const rootCause = new Error('Database error')
+      const middleCause = new Error('Repository error')
+      middleCause.cause = rootCause
+      const error = new Error('Service error')
+      error.cause = middleCause
       
-      // Should not throw
-      const formatted = formatError(error)
-      assert(formatted.includes('Circular error'))
+      const formatted = formatError(error, true)
+      
+      assert(formatted.includes('Service error'))
+      assert(formatted.includes('Caused by: Repository error'))
+      assert(formatted.includes('Caused by: Database error'))
     })
 
-    it('should handle non-Error objects', () => {
-      const formatted = formatError('String error')
-      assert(formatted.includes('String error'))
+    it('should format ProGuardianError subclasses correctly', () => {
+      const validationError = new ValidationError('email', 'invalid format')
+      assert.equal(formatError(validationError), '[VALIDATION_ERROR] Invalid email: invalid format')
       
-      const formatted2 = formatError({ message: 'Object error' })
-      assert(formatted2.includes('Object error'))
+      const securityError = new SecurityError('Suspicious activity from 192.168.1.1')
+      assert.equal(formatError(securityError), '[SECURITY_ERROR] Suspicious activity from <ip>')
       
-      const formatted3 = formatError(null)
-      assert(formatted3.includes('Unknown error'))
+      const fileError = new FileOperationError('read', '/secret/data.txt', 'Access denied')
+      assert.equal(formatError(fileError), '[FILE_OPERATION_ERROR] File operation failed: Cannot read data.txt: Access denied')
     })
   })
 
-  describe.skip('Error Integration', () => {
-    it('should properly chain handleError with custom errors', () => {
-      const rootCause = new Error('Database connection failed')
-      const fileError = new FileOperationError('read', '/config/db.json', rootCause.message)
-      fileError.cause = rootCause
+  describe('Error Integration', () => {
+    it('should handle real-world security scenarios', () => {
+      // Simulate a path traversal attempt
+      const error = new PathTraversalError('../../../etc/passwd')
       
-      handleError(fileError, { exit: false, verbose: true })
+      handleError(error, { exit: false })
       
-      assert(consoleErrors.some(line => line.includes('File Operation Error')))
-      assert(consoleErrors.some(line => line.includes('Failed to read /config/db.json')))
-      assert(consoleErrors.some(line => line.includes('Database connection failed')))
+      assert(consoleErrors.some(line => line.includes('Security violation:')))
+      assert(consoleErrors.some(line => line.includes('Path traversal attempt detected')))
+      assert(!consoleErrors.some(line => line.includes('../../../etc/passwd'))) // Should not leak the path
     })
 
-    it('should handle nested validation errors', () => {
-      const innerError = new ValidationError('Must be positive', 'age')
-      const outerError = new ValidationError('Invalid user data', 'user')
-      outerError.cause = innerError
+    it('should handle command injection attempts', () => {
+      const error = new CommandInjectionError('rm -rf / --no-preserve-root')
       
-      handleError(outerError, { exit: false, verbose: true })
+      handleError(error, { exit: false })
       
-      assert(consoleErrors.some(line => line.includes('Invalid user data')))
-      assert(consoleErrors.some(line => line.includes('Field: user')))
-      assert(consoleErrors.some(line => line.includes('Must be positive')))
-      assert(consoleErrors.some(line => line.includes('Field: age')))
+      assert(consoleErrors.some(line => line.includes('Security violation:')))
+      assert(consoleErrors.some(line => line.includes('Potentially unsafe characters detected')))
+      assert(!consoleErrors.some(line => line.includes('rm -rf'))) // Should not leak the command
+    })
+
+    it('should properly sanitize multiple sensitive data types', () => {
+      const error = new SecurityError(
+        'User admin@company.com from 192.168.1.100 tried to access /home/admin/secrets.txt',
+        { user: 'admin@company.com', ip: '192.168.1.100', path: '/home/admin/secrets.txt' }
+      )
+      
+      handleError(error, { exit: false })
+      
+      const errorOutput = consoleErrors.join(' ')
+      assert(errorOutput.includes('<email>'))
+      assert(errorOutput.includes('<ip>'))
+      assert(errorOutput.includes('<path>'))
+      assert(!errorOutput.includes('admin@company.com'))
+      assert(!errorOutput.includes('192.168.1.100'))
+      assert(!errorOutput.includes('/home/admin/secrets.txt'))
+    })
+
+    it('should test inheritance chain', () => {
+      const error = new PathTraversalError('../../etc/passwd')
+      
+      assert(error instanceof Error)
+      assert(error instanceof ProGuardianError)
+      assert(error instanceof SecurityError)
+      assert(error instanceof PathTraversalError)
+      
+      // Should have all expected properties
+      assert.equal(error.name, 'PathTraversalError')
+      assert.equal(error.code, 'SECURITY_ERROR')
+      assert(error.message)
+      assert(error.stack)
     })
   })
 })
