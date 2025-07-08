@@ -1,0 +1,50 @@
+{
+  "name": "@proguardian/cli",
+  "version": "0.1.0",
+  "description": "Guardian supervision layer for AI coding assistants",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "proguardian": "./bin/proguardian.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "test:coverage": "c8 --reporter=text --reporter=lcov node --test",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "quality": "npm run lint && npm run format:check",
+    "prepublishOnly": "npm run test && npm run lint"
+  },
+  "keywords": [
+    "claude",
+    "gemini",
+    "ai",
+    "code-quality",
+    "guardian",
+    "supervision"
+  ],
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "fs-extra": "^11.2.0",
+    "which": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WillyNilsson/ProGuardian.git"
+  },
+  "author": "VibeCoders",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "c8": "^10.1.2",
+    "eslint": "^9.30.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-security": "^3.0.1",
+    "prettier": "^3.6.2"
+  }
+}

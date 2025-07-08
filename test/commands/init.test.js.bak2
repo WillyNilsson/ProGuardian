@@ -1,0 +1,237 @@
+import { describe, it, before, after, beforeEach, afterEach, mock } from 'node:test'
+import assert from 'node:assert'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { initCommand } from '../../src/commands/init.js'
+import {
+  createTestContext,
+  createMockFS,
+  mockFileExists,
+  readMockFile,
+  assertFileContains,
+  assertFileDoesNotContain,
+  mockWhich,
+  getTemplatePath,
+} from '../helpers/test-utils.js'
+import * as cliDetector from '../../src/utils/cli-detector.js'
+import fs from 'fs/promises'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+describe('Init Command Tests', () => {
+  let ctx
+  let originalCwd
+  let restoreCwd
+
+  // Save and restore CWD safely
+  before(async () => {
+    try {
+      originalCwd = process.cwd()
+      restoreCwd = () => {
+        try {
+          if (originalCwd) process.chdir(originalCwd)
+        } catch {
+          // Ignore errors
+        }
+      }
+    } catch {
+      // If we can't get cwd, create a no-op restore
+      restoreCwd = () => {}
+    }
+  })
+
+  after(async () => {
+    restoreCwd()
+  })
+
+  beforeEach(async () => {
+    try {
+      ctx = await createTestContext()
+    } catch (error) {
+      console.error('Failed to create test context:', error)
+      throw error
+    }
+  })
+
+  afterEach(async () => {
+    try {
+      if (ctx && ctx.cleanup) {
+        await ctx.cleanup()
+      }
+    } catch {
+      // Ignore cleanup errors
+    }
+  })
+
+  describe('Happy Path', () => {
+    it('should enhance existing CLAUDE.md file', async () => {
+      // Create existing CLAUDE.md
+      await createMockFS(ctx.testDir, {
+        'CLAUDE.md': '# Existing content\n\nThis is my project.'
+      })
+
+      const options = { baseDir: ctx.testDir }
+      await initCommand(options)
+
+      const content = await readMockFile(ctx.testDir, 'CLAUDE.md')
+      
+      // Should preserve existing content
+      assertFileContains(content, '# Existing content')
+      assertFileContains(content, 'This is my project.')
+      
+      // Should add Guardian content
+      assertFileContains(content, '## 🛡️ GUARDIAN MODE ACTIVE')
+      assertFileContains(content, '# GUARDIAN - Senior Developer Protocol')
+    })
+
+    it('should create new CLAUDE.md file when none exists', async () => {
+      const options = { baseDir: ctx.testDir }
+      await initCommand(options)
+
+      const content = await readMockFile(ctx.testDir, 'CLAUDE.md')
+      
+      // Should include Guardian content
+      assertFileContains(content, '## 🛡️ GUARDIAN MODE ACTIVE')
+      assertFileContains(content, '# GUARDIAN - Senior Developer Protocol')
+      assertFileContains(content, 'Identity Framework')
+    })
+
+    it('should not duplicate Guardian section if already present', async () => {
+      // Create CLAUDE.md with Guardian section already present
+      const existingTemplate = await fs.readFile(getTemplatePath('CLAUDE.md'), 'utf8')
+      await createMockFS(ctx.testDir, {
+        'CLAUDE.md': `# My Project\n\n## 🛡️ GUARDIAN MODE ACTIVE\n\n${existingTemplate}`
+      })
+
+      const options = { baseDir: ctx.testDir }
+      await initCommand(options)
+
+      const content = await readMockFile(ctx.testDir, 'CLAUDE.md')
+      
+      // Should not duplicate the Guardian section
+      const guardianCount = (content.match(/## 🛡️ GUARDIAN MODE ACTIVE/g) || []).length
+      assert.strictEqual(guardianCount, 1, 'Guardian section should appear only once')
+    })
+
+    it('should respect custom paths', async () => {
+      const customPath = 'docs/AI_INSTRUCTIONS.md'
+      await createMockFS(ctx.testDir, {
+        [customPath]: '# Custom AI instructions'
+      })
+
+      const options = { 
+        baseDir: ctx.testDir,
+        path: customPath
+      }
+      await initCommand(options)
+
+      const content = await readMockFile(ctx.testDir, customPath)
+      
+      // Should enhance the custom file
+      assertFileContains(content, '# Custom AI instructions')
+      assertFileContains(content, '## 🛡️ GUARDIAN MODE ACTIVE')
+    })
+  })
+
+  describe('CLI Detection', () => {
+    it('should detect and append CLI-specific instructions', async () => {
+      // Mock CLI detection
+      const detectCLIMock = mock.method(cliDetector, 'detectCLI', async () => ({
+        type: 'cursor',
+        configPath: '.cursor/settings.json'
+      }))
+
+      const options = { baseDir: ctx.testDir }
+      await initCommand(options)
+
+      const content = await readMockFile(ctx.testDir, 'CLAUDE.md')
+      
+      // Should include Cursor-specific instructions
+      assertFileContains(content, 'Using Cursor AI Editor')
+      
+      detectCLIMock.mock.restore()
+    })
+
+    it('should work without specific CLI detected', async () => {
+      // Mock no CLI detected
+      const detectCLIMock = mock.method(cliDetector, 'detectCLI', async () => null)
+
+      const options = { baseDir: ctx.testDir }
+      await initCommand(options)
+
+      const content = await readMockFile(ctx.testDir, 'CLAUDE.md')
+      
+      // Should still have Guardian content
+      assertFileContains(content, '## 🛡️ GUARDIAN MODE ACTIVE')
+      
+      // Should not have CLI-specific content
+      assertFileDoesNotContain(content, 'Using Cursor AI Editor')
+      assertFileDoesNotContain(content, 'Using Continue Dev')
+      
+      detectCLIMock.mock.restore()
+    })
+  })
+
+  describe('Error Handling', () => {
+    it('should handle permission errors gracefully', async () => {
+      // Create a file and then make the directory read-only
+      await createMockFS(ctx.testDir, {
+        'CLAUDE.md': '# Test'
+      })
+
+      // Mock fs.writeFile to throw permission error
+      const writeFileMock = mock.method(fs, 'writeFile', async () => {
+        const error = new Error('Permission denied')
+        error.code = 'EACCES'
+        throw error
+      })
+
+      const options = { baseDir: ctx.testDir }
+      
+      await assert.rejects(
+        async () => await initCommand(options),
+        {
+          message: /Permission denied/
+        }
+      )
+
+      writeFileMock.mock.restore()
+    })
+
+    it('should validate paths to prevent traversal', async () => {
+      const options = { 
+        baseDir: ctx.testDir,
+        path: '../../../etc/passwd'
+      }
+      
+      await assert.rejects(
+        async () => await initCommand(options),
+        {
+          message: /Invalid path/
+        }
+      )
+    })
+  })
+
+  describe('Force Mode', () => {
+    it('should append Guardian section even if present when force is true', async () => {
+      // Create CLAUDE.md with Guardian section
+      const guardianTemplate = await fs.readFile(getTemplatePath('CLAUDE.md'), 'utf8')
+      await createMockFS(ctx.testDir, {
+        'CLAUDE.md': `# My Project\n\n## 🛡️ GUARDIAN MODE ACTIVE\n\n${guardianTemplate}`
+      })
+
+      const options = { 
+        baseDir: ctx.testDir,
+        force: true
+      }
+      await initCommand(options)
+
+      const content = await readMockFile(ctx.testDir, 'CLAUDE.md')
+      
+      // With force, Guardian section should appear twice
+      const guardianCount = (content.match(/## 🛡️ GUARDIAN MODE ACTIVE/g) || []).length
+      assert.strictEqual(guardianCount, 2, 'Guardian section should appear twice with force')
+    })
+  })
+})

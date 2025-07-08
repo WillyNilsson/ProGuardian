@@ -1,0 +1,33 @@
+name: Update Status Badges
+
+on:
+  workflow_run:
+    workflows: ['CI', 'Security']
+    types:
+      - completed
+  schedule:
+    - cron: '0 */6 * * *' # Every 6 hours
+
+permissions:
+  contents: write
+
+jobs:
+  update-badges:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update last updated timestamp
+        run: |
+          # This workflow ensures badges are refreshed
+          # GitHub caches badge images, this helps invalidate the cache
+          echo "Last badge update: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" > .github/BADGE_UPDATE
+
+      - name: Commit badge update
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .github/BADGE_UPDATE || true
+          git diff --quiet && git diff --staged --quiet || git commit -m "chore: update badge timestamp [skip ci]"
+          git push || true

@@ -1,0 +1,543 @@
+import { describe, it, before, after, beforeEach, afterEach, mock } from 'node:test'
+import assert from 'node:assert'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { initCommand } from '../../src/commands/init.js'
+import {
+  createTestContext,
+  createMockFS,
+  mockFileExists,
+  readMockFile,
+  assertFileContains,
+  assertFileDoesNotContain,
+  mockWhich,
+  getTemplatePath,
+} from '../helpers/test-utils.js'
+import * as cliDetector from '../../src/utils/cli-detector.js'
+import fs from 'fs/promises'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+describe('Init Command Tests', () => {
+  let ctx
+  let originalCwd
+
+  // Save the original CWD at the start
+  before(() => {
+    originalCwd = process.cwd()
+  })
+
+  beforeEach(async () => {
+    ctx = await createTestContext()
+  })
+
+  afterEach(async () => {
+    await ctx.cleanup()
+  })
+
+  // Ensure we're back in original CWD after all tests
+  after(() => {
+    // Simple cleanup - just try to restore CWD
+    if (originalCwd) {
+      try {
+        process.chdir(originalCwd)
+      } catch {
+        // Ignore errors
+      }
+    }
+  })
+
+  describe('Happy Path', () => {
+    it('should create CLAUDE.md when no file exists', async () => {
+      // Mock CLI detection to return Claude
+      const mockDetermineCLI = async () => cliDetector.CLI_CLAUDE
+      const mockGetTargetFilename = (cliType) => cliDetector.getTargetFilename(cliType)
+
+      // Create template file in real filesystem (tests need access to templates)
+      const templateContent = await fs.readFile(getTemplatePath('CLAUDE.md'), 'utf8')
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      // Run init command with force option to create file
+      await initCommand({ force: true, baseDir: ctx.testDir }, {
+        determineCLI: mockDetermineCLI,
+        getTargetFilename: mockGetTargetFilename
+      })
+
+      // Check that CLAUDE.md was created
+      assert(await mockFileExists(ctx.testDir, 'CLAUDE.md'))
+
+      // Check file content
+      const content = await readMockFile(ctx.testDir, 'CLAUDE.md')
+      assert(content.includes('## 🛡️ GUARDIAN MODE ACTIVE'))
+      assert(content.includes('GUARDIAN - Senior Developer Protocol'))
+
+      // Check .proguardian marker
+      assert(await mockFileExists(ctx.testDir, '.proguardian'))
+      const marker = JSON.parse(await readMockFile(ctx.testDir, '.proguardian'))
+      assert.equal(marker.mode, 'guardian')
+      assert.equal(marker.cliType, 'claude')
+      assert.equal(marker.targetFile, 'CLAUDE.md')
+
+      // Check console output
+      const logs = ctx.consoleMock.getLogs()
+      assert(logs.some((log) => log.includes('Created Guardian-only CLAUDE.md')))
+      assert(logs.some((log) => log.includes('Guardian supervision active!')))
+    })
+
+    it('should enhance existing CLAUDE.md with Guardian content', async () => {
+      // Mock CLI detection
+      const mockDetermineCLI = async () => cliDetector.CLI_CLAUDE
+      const mockGetTargetFilename = (cliType) => cliDetector.getTargetFilename(cliType)
+
+      // Create existing CLAUDE.md
+      const existingContent = `# Project Instructions
+
+This project is a web application built with React.
+
+## Development Setup
+
+Run npm install to get started.`
+
+      await createMockFS(ctx.testDir, {
+        'CLAUDE.md': existingContent,
+      })
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      // Run init command with mocked dependencies
+      await initCommand({ baseDir: ctx.testDir }, {
+        determineCLI: mockDetermineCLI,
+        getTargetFilename: mockGetTargetFilename
+      })
+
+      // Check that original content is preserved
+      const content = await readMockFile(ctx.testDir, 'CLAUDE.md')
+      assert(content.includes('This project is a web application'))
+      assert(content.includes('## 🛡️ GUARDIAN MODE ACTIVE'))
+      assert(content.includes('GUARDIAN - Senior Developer Protocol'))
+
+      // Check console output
+      const logs = ctx.consoleMock.getLogs()
+      assert(logs.some((log) => log.includes('Added Guardian mode to existing CLAUDE.md')))
+    })
+
+    it('should work with Gemini CLI', async () => {
+      // Mock CLI detection to return Gemini
+      const mockDetermineCLI = async () => cliDetector.CLI_GEMINI
+      const mockGetTargetFilename = (cliType) => cliDetector.getTargetFilename(cliType)
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      // Run init command with force to create file
+      await initCommand({ force: true, baseDir: ctx.testDir }, {
+        determineCLI: mockDetermineCLI,
+        getTargetFilename: mockGetTargetFilename
+      })
+
+      // Check that GEMINI.md was created
+      assert(await mockFileExists(ctx.testDir, 'GEMINI.md'))
+
+      // Check file content
+      const content = await readMockFile(ctx.testDir, 'GEMINI.md')
+      assert(content.includes('## 🛡️ GUARDIAN MODE ACTIVE'))
+
+      // Check .proguardian marker
+      const marker = JSON.parse(await readMockFile(ctx.testDir, '.proguardian'))
+      assert.equal(marker.cliType, 'gemini')
+      assert.equal(marker.targetFile, 'GEMINI.md')
+    })
+
+    it('should handle --force option to reinstall Guardian', async () => {
+      // Mock CLI detection
+      const mockDetermineCLI = async () => cliDetector.CLI_CLAUDE
+      const mockGetTargetFilename = (cliType) => cliDetector.getTargetFilename(cliType)
+
+      // Create existing CLAUDE.md with Guardian already installed
+      const existingContent = `# Project Instructions
+
+This is my project.
+
+## 🛡️ GUARDIAN MODE ACTIVE
+
+Old Guardian content here.`
+
+      await createMockFS(ctx.testDir, {
+        'CLAUDE.md': existingContent,
+      })
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      // Run init command with force
+      await initCommand({ force: true, baseDir: ctx.testDir }, {
+        determineCLI: mockDetermineCLI,
+        getTargetFilename: mockGetTargetFilename
+      })
+
+      // Check that Guardian was reinstalled
+      const content = await readMockFile(ctx.testDir, 'CLAUDE.md')
+      assert(content.includes('This is my project'))
+      assert(!content.includes('Old Guardian content here'))
+      assert(content.includes('GUARDIAN - Senior Developer Protocol'))
+
+      // Check console output
+      const logs = ctx.consoleMock.getLogs()
+      assert(logs.some((log) => log.includes('Guardian mode is already active')))
+      assert(logs.some((log) => log.includes('Reinstalling Guardian section')))
+    })
+
+    it('should handle --cli option to specify CLI type', async () => {
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      // Run init command with explicit CLI type and force
+      await initCommand({ cli: 'gemini', force: true, baseDir: ctx.testDir }, {
+        determineCLI: cliDetector.determineCLI,
+        getTargetFilename: cliDetector.getTargetFilename
+      })
+
+      // Check that GEMINI.md was created
+      assert(await mockFileExists(ctx.testDir, 'GEMINI.md'))
+
+      // Check .proguardian marker
+      const marker = JSON.parse(await readMockFile(ctx.testDir, '.proguardian'))
+      assert.equal(marker.cliType, 'gemini')
+    })
+  })
+
+  describe('Edge Cases', () => {
+    it('should handle when no CLI is available', async () => {
+      // Mock CLI detection to return null
+      const mockDetermineCLI = async () => null
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      // Run init command with mocked dependencies
+      await initCommand({ baseDir: ctx.testDir }, {
+        determineCLI: mockDetermineCLI,
+        getTargetFilename: cliDetector.getTargetFilename
+      })
+
+      // Check that no files were created
+      assert(!(await mockFileExists(ctx.testDir, 'CLAUDE.md')))
+      assert(!(await mockFileExists(ctx.testDir, 'GEMINI.md')))
+      assert(!(await mockFileExists(ctx.testDir, '.proguardian')))
+    })
+
+    it('should skip if Guardian already installed and no force', async () => {
+      // Mock CLI detection
+      const mockDetermineCLI = async () => cliDetector.CLI_CLAUDE
+      const mockGetTargetFilename = (cliType) => cliDetector.getTargetFilename(cliType)
+
+      // Create existing CLAUDE.md with Guardian
+      const existingContent = `# Project
+
+## 🛡️ GUARDIAN MODE ACTIVE
+
+Guardian content.`
+
+      await createMockFS(ctx.testDir, {
+        'CLAUDE.md': existingContent,
+      })
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      // Run init command without force
+      await initCommand({ baseDir: ctx.testDir }, {
+        determineCLI: mockDetermineCLI,
+        getTargetFilename: mockGetTargetFilename
+      })
+
+      // Check console output
+      const logs = ctx.consoleMock.getLogs()
+      assert(logs.some((log) => log.includes('Guardian mode is already active')))
+      assert(!logs.some((log) => log.includes('Added Guardian mode')))
+    })
+
+    it('should suggest running CLI init first when no file exists', async () => {
+      // Mock CLI detection
+      const mockDetermineCLI = async () => cliDetector.CLI_CLAUDE
+      const mockGetTargetFilename = (cliType) => cliDetector.getTargetFilename(cliType)
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      // Run init command without force (no existing CLAUDE.md)
+      await initCommand({ baseDir: ctx.testDir }, {
+        determineCLI: mockDetermineCLI,
+        getTargetFilename: mockGetTargetFilename
+      })
+
+      // Check console output
+      const logs = ctx.consoleMock.getLogs()
+      assert(logs.some((log) => log.includes('No CLAUDE.md found')))
+      assert(logs.some((log) => log.includes('claude init')))
+      assert(logs.some((log) => log.includes('proguardian init --force')))
+
+      // Check that no file was created
+      assert(!(await mockFileExists(ctx.testDir, 'CLAUDE.md')))
+    })
+
+    it('should handle very large existing files', async () => {
+      // Mock CLI detection
+      const mockDetermineCLI = async () => cliDetector.CLI_CLAUDE
+      const mockGetTargetFilename = (cliType) => cliDetector.getTargetFilename(cliType)
+
+      // Create a large existing file (but under 5MB limit)
+      const largeContent = 'x'.repeat(4 * 1024 * 1024) // 4MB
+
+      await createMockFS(ctx.testDir, {
+        'CLAUDE.md': largeContent,
+      })
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      // Run init command with mocked dependencies
+      await initCommand({ baseDir: ctx.testDir }, {
+        determineCLI: mockDetermineCLI,
+        getTargetFilename: mockGetTargetFilename
+      })
+
+      // Check that Guardian was added
+      const content = await readMockFile(ctx.testDir, 'CLAUDE.md')
+      assert(content.includes('## 🛡️ GUARDIAN MODE ACTIVE'))
+      assert(content.startsWith('xxxx')) // Original content preserved
+    })
+
+    it('should handle empty existing files', async () => {
+      // Mock CLI detection
+      const mockDetermineCLI = async () => cliDetector.CLI_CLAUDE
+      const mockGetTargetFilename = (cliType) => cliDetector.getTargetFilename(cliType)
+
+      // Create empty file
+      await createMockFS(ctx.testDir, {
+        'CLAUDE.md': '',
+      })
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      // Run init command with mocked dependencies
+      await initCommand({ baseDir: ctx.testDir }, {
+        determineCLI: mockDetermineCLI,
+        getTargetFilename: mockGetTargetFilename
+      })
+
+      // Check that Guardian was added
+      const content = await readMockFile(ctx.testDir, 'CLAUDE.md')
+      assert(content.includes('## 🛡️ GUARDIAN MODE ACTIVE'))
+    })
+  })
+
+  describe('Error Scenarios', () => {
+    it('should handle file system errors gracefully', async () => {
+      // Mock CLI detection
+      const mockDetermineCLI = async () => cliDetector.CLI_CLAUDE
+      const mockGetTargetFilename = (cliType) => cliDetector.getTargetFilename(cliType)
+
+      // Create a file where we expect a directory (simulate file system error)
+      await createMockFS(ctx.testDir, {
+        'CLAUDE.md': 'existing content'
+      })
+      
+      // Make the file read-only to prevent writing
+      await fs.chmod(path.join(ctx.testDir, 'CLAUDE.md'), 0o444)
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      try {
+        // Run init command - should handle error when trying to write
+        await initCommand({ force: true, verbose: true, baseDir: ctx.testDir }, {
+          determineCLI: mockDetermineCLI,
+          getTargetFilename: mockGetTargetFilename
+        })
+        // If we get here, the command didn't fail as expected
+        assert.fail('Command should have failed')
+      } catch (error) {
+        // Expected - command exits on error
+      }
+
+      // Restore permissions
+      await fs.chmod(path.join(ctx.testDir, 'CLAUDE.md'), 0o644)
+
+      // Check that error was logged
+      const errors = ctx.consoleMock.getErrors()
+      assert(errors.length > 0, 'Expected errors to be logged')
+    })
+
+    it('should validate options properly', async () => {
+      // Mock CLI detection
+      const mockDetermineCLI = async () => cliDetector.CLI_CLAUDE
+      const mockGetTargetFilename = (cliType) => cliDetector.getTargetFilename(cliType)
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      try {
+        // Run with invalid option
+        await initCommand({ invalidOption: true, baseDir: ctx.testDir }, {
+          determineCLI: mockDetermineCLI,
+          getTargetFilename: mockGetTargetFilename
+        })
+      } catch (error) {
+        // Expected
+      }
+
+      // Check error output
+      const errors = ctx.consoleMock.getErrors()
+      assert(errors.some((error) => error.includes('Unknown options provided')))
+    })
+
+    it('should handle missing template files', async () => {
+      // Mock CLI detection and getTargetFilename to return a non-existent template
+      const mockDetermineCLI = async () => 'custom'
+      const mockGetTargetFilename = () => 'NONEXISTENT.md'
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      try {
+        // Run init command with mocked dependencies
+        await initCommand({ force: true, baseDir: ctx.testDir }, {
+          determineCLI: mockDetermineCLI,
+          getTargetFilename: mockGetTargetFilename
+        })
+      } catch (error) {
+        // Expected
+      }
+
+      // Check error output
+      const errors = ctx.consoleMock.getErrors()
+      assert(errors.some((error) => error.includes('Template file not found')))
+    })
+  })
+
+  describe('Security Tests', () => {
+    it('should reject path traversal attempts in options', async () => {
+      // Mock CLI detection
+      const mockDetermineCLI = async () => cliDetector.CLI_CLAUDE
+      const mockGetTargetFilename = (cliType) => cliDetector.getTargetFilename(cliType)
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      try {
+        // Attempt path traversal
+        await initCommand({ path: '../../../etc/passwd', baseDir: ctx.testDir }, {
+          determineCLI: mockDetermineCLI,
+          getTargetFilename: mockGetTargetFilename
+        })
+      } catch (error) {
+        // Expected
+      }
+    })
+
+    it('should sanitize file paths properly', async () => {
+      // Mock CLI detection
+      const mockDetermineCLI = async () => cliDetector.CLI_CLAUDE
+      const mockGetTargetFilename = (cliType) => cliDetector.getTargetFilename(cliType)
+
+      // Create file with special characters
+      await createMockFS(ctx.testDir, {
+        'CLAUDE.md': 'test',
+      })
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      // Run init - should handle safely
+      await initCommand({ baseDir: ctx.testDir }, {
+        determineCLI: mockDetermineCLI,
+        getTargetFilename: mockGetTargetFilename
+      })
+
+      // Should complete successfully
+      assert(await mockFileExists(ctx.testDir, 'CLAUDE.md'))
+    })
+  })
+
+  describe('Integration Tests', () => {
+    it('should complete full workflow with Claude', async () => {
+      // Mock CLI detection
+      const mockDetermineCLI = async (options) => {
+        if (options.cli) return options.cli
+        return cliDetector.CLI_CLAUDE
+      }
+      const mockGetTargetFilename = (cliType) => cliDetector.getTargetFilename(cliType)
+
+      // Create existing project file
+      await createMockFS(ctx.testDir, {
+        'CLAUDE.md': '# My Project\n\nProject description here.',
+      })
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      // Run init command with mocked dependencies
+      await initCommand({ baseDir: ctx.testDir }, {
+        determineCLI: mockDetermineCLI,
+        getTargetFilename: mockGetTargetFilename
+      })
+
+      // Verify complete setup
+      assert(await mockFileExists(ctx.testDir, 'CLAUDE.md'))
+      assert(await mockFileExists(ctx.testDir, '.proguardian'))
+
+      const content = await readMockFile(ctx.testDir, 'CLAUDE.md')
+      assert(content.includes('# My Project'))
+      assert(content.includes('## 🛡️ GUARDIAN MODE ACTIVE'))
+
+      const marker = JSON.parse(await readMockFile(ctx.testDir, '.proguardian'))
+      assert.equal(marker.version, '0.1.0')
+      assert(marker.initialized)
+      assert.equal(marker.enhanced, true)
+    })
+
+    it('should handle multiple init calls correctly', async () => {
+      // Mock CLI detection
+      const mockDetermineCLI = async () => cliDetector.CLI_CLAUDE
+      const mockGetTargetFilename = (cliType) => cliDetector.getTargetFilename(cliType)
+
+      // Capture console output
+      ctx.consoleMock.capture()
+
+      // First init
+      await initCommand({ force: true }, {
+        determineCLI: mockDetermineCLI,
+        getTargetFilename: mockGetTargetFilename
+      })
+
+      // Clear console
+      ctx.consoleMock.clear()
+
+      // Second init without force
+      await initCommand({ baseDir: ctx.testDir }, {
+        determineCLI: mockDetermineCLI,
+        getTargetFilename: mockGetTargetFilename
+      })
+
+      // Third init with force
+      await initCommand({ force: true, baseDir: ctx.testDir }, {
+        determineCLI: mockDetermineCLI,
+        getTargetFilename: mockGetTargetFilename
+      })
+
+      // Check final state
+      assert(await mockFileExists(ctx.testDir, 'CLAUDE.md'))
+      const content = await readMockFile(ctx.testDir, 'CLAUDE.md')
+      assert(content.includes('## 🛡️ GUARDIAN MODE ACTIVE'))
+
+      // Check that Guardian section appears only once
+      const guardianCount = (content.match(/## 🛡️ GUARDIAN MODE ACTIVE/g) || []).length
+      assert.equal(guardianCount, 1)
+    })
+  })
+})

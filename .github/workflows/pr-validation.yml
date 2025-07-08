@@ -1,0 +1,149 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+permissions:
+  pull-requests: write
+  checks: write
+
+jobs:
+  validate-pr:
+    name: Validate PR Standards
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Check PR title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            test
+            chore
+            ci
+          requireScope: false
+          subjectPattern: ^[A-Z].*[^.]$
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}"
+            doesn't match the configured pattern. Please ensure that the subject
+            starts with an uppercase letter and doesn't end with a period.
+
+      - name: Check file sizes
+        run: |
+          # Check for large files (>1MB)
+          LARGE_FILES=$(find . -type f -size +1M -not -path "./.git/*" -not -path "./node_modules/*")
+          if [ ! -z "$LARGE_FILES" ]; then
+            echo "❌ Large files detected (>1MB):"
+            echo "$LARGE_FILES"
+            exit 1
+          fi
+
+      - name: Guardian code quality check
+        run: |
+          # Check for common anti-patterns
+          echo "Checking for Guardian anti-patterns..."
+
+          # Check for console.log
+          if grep -r "console\.log" --include="*.js" --exclude-dir=node_modules --exclude-dir=.git .; then
+            echo "❌ Found console.log statements"
+            exit 1
+          fi
+
+          # Check for TODO/FIXME
+          if grep -r "TODO\|FIXME" --include="*.js" --exclude-dir=node_modules --exclude-dir=.git .; then
+            echo "❌ Found TODO/FIXME comments"
+            exit 1
+          fi
+
+          # Check for hardcoded URLs
+          if grep -r "http://localhost\|127\.0\.0\.1" --include="*.js" --exclude-dir=node_modules --exclude-dir=test --exclude-dir=.git .; then
+            echo "❌ Found hardcoded localhost URLs"
+            exit 1
+          fi
+
+          echo "✅ No Guardian anti-patterns detected"
+
+      - name: Check test coverage
+        run: |
+          npm ci
+          npm run test:coverage
+
+          # Extract coverage percentage
+          COVERAGE=$(cat coverage/lcov.info | grep -o "LF:[0-9]*" | awk -F: '{sum+=$2} END {print sum}')
+          COVERED=$(cat coverage/lcov.info | grep -o "LH:[0-9]*" | awk -F: '{sum+=$2} END {print sum}')
+
+          if [ "$COVERAGE" -gt 0 ]; then
+            PERCENTAGE=$((COVERED * 100 / COVERAGE))
+            echo "Coverage: $PERCENTAGE%"
+            
+            if [ "$PERCENTAGE" -lt 80 ]; then
+              echo "❌ Coverage is below 80% threshold"
+              exit 1
+            fi
+          fi
+
+      - name: Post PR comment
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('Guardian Quality Check')
+            );
+
+            const checksPassed = ${{ job.status == 'success' }};
+            const body = `## 🛡️ Guardian Quality Check
+
+            ${checksPassed ? '✅ **All quality checks passed!**' : '❌ **Quality checks failed**'}
+
+            ### Checklist
+            - ${checksPassed ? '✅' : '❌'} Semantic PR title
+            - ${checksPassed ? '✅' : '❌'} No large files
+            - ${checksPassed ? '✅' : '❌'} No console.log statements
+            - ${checksPassed ? '✅' : '❌'} No TODO/FIXME comments
+            - ${checksPassed ? '✅' : '❌'} No hardcoded URLs
+            - ${checksPassed ? '✅' : '❌'} Test coverage ≥ 80%
+
+            ${!checksPassed ? '**Please fix the issues above before merging.**' : '**Ready for review!**'}
+            `;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }

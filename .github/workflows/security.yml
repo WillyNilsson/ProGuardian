@@ -1,0 +1,167 @@
+name: Security
+
+on:
+  schedule:
+    - cron: '0 9 * * *' # Daily at 9 AM UTC
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: |
+          npm audit --json > audit-report.json || true
+
+          # Check for critical and high vulnerabilities
+          CRITICAL=$(cat audit-report.json | jq '.metadata.vulnerabilities.critical // 0')
+          HIGH=$(cat audit-report.json | jq '.metadata.vulnerabilities.high // 0')
+
+          echo "Critical vulnerabilities: $CRITICAL"
+          echo "High vulnerabilities: $HIGH"
+
+          if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
+            echo "Found critical or high vulnerabilities!"
+            npm audit
+            exit 1
+          fi
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: audit-report.json
+
+  code-scanning:
+    name: Code Security Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install license checker
+        run: npm install -g license-checker
+
+      - name: Check licenses
+        run: |
+          # Generate license report
+          license-checker --json > licenses.json
+
+          # Check for problematic licenses
+          PROBLEMATIC_LICENSES="GPL|AGPL|LGPL|SSPL|CC-BY-NC|proprietary"
+
+          if grep -E "$PROBLEMATIC_LICENSES" licenses.json; then
+            echo "Found potentially problematic licenses!"
+            license-checker --summary
+            exit 1
+          fi
+
+          echo "All licenses appear to be compatible!"
+          license-checker --summary
+
+      - name: Upload license report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: licenses.json
+
+  secrets-scan:
+    name: Secrets Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  security-report:
+    name: Security Report
+    needs: [dependency-scan, code-scanning, license-check, secrets-scan]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Generate security summary
+        run: |
+          echo "# Security Scan Summary" > security-summary.md
+          echo "" >> security-summary.md
+          echo "## Results" >> security-summary.md
+          echo "- Dependency Scan: ${{ needs.dependency-scan.result }}" >> security-summary.md
+          echo "- Code Scanning: ${{ needs.code-scanning.result }}" >> security-summary.md
+          echo "- License Check: ${{ needs.license-check.result }}" >> security-summary.md
+          echo "- Secrets Scan: ${{ needs.secrets-scan.result }}" >> security-summary.md
+
+          if [[ "${{ needs.dependency-scan.result }}" != "success" || 
+                "${{ needs.code-scanning.result }}" != "success" || 
+                "${{ needs.license-check.result }}" != "success" || 
+                "${{ needs.secrets-scan.result }}" != "success" ]]; then
+            echo "" >> security-summary.md
+            echo "⚠️ **Security issues detected!**" >> security-summary.md
+            exit 1
+          else
+            echo "" >> security-summary.md
+            echo "✅ **All security checks passed!**" >> security-summary.md
+          fi
+
+      - name: Upload security summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-summary
+          path: security-summary.md

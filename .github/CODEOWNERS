@@ -1,0 +1,25 @@
+# CODEOWNERS for ProGuardian CLI
+# These owners will be requested for review when someone opens a pull request
+
+# Global owners
+* @vibecoders/maintainers
+
+# Guardian prompt changes require careful review
+/src/data/guardian-prompt.js @vibecoders/guardian-experts @vibecoders/maintainers
+
+# CI/CD and security workflows
+/.github/workflows/ @vibecoders/devops @vibecoders/maintainers
+/.github/dependabot.yml @vibecoders/devops @vibecoders/maintainers
+
+# Core functionality
+/src/commands/ @vibecoders/maintainers
+/bin/ @vibecoders/maintainers
+
+# Documentation
+/README.md @vibecoders/docs @vibecoders/maintainers
+/CONTRIBUTING.md @vibecoders/docs @vibecoders/maintainers
+/CLAUDE.md @vibecoders/guardian-experts @vibecoders/maintainers
+
+# Package configuration
+/package.json @vibecoders/maintainers
+/package-lock.json @vibecoders/maintainers

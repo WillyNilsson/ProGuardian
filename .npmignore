@@ -1,0 +1,27 @@
+# Development files
+.github/
+test/
+coverage/
+examples/
+
+# Config files
+.prettierrc.json
+.prettierignore
+eslint.config.js
+.eslintrc.json
+.claude/
+
+# Documentation
+CONTRIBUTING.md
+LINTING_SETUP.md
+IMPLEMENTATION.md
+headers.txt
+
+# OS/IDE files
+.DS_Store
+*.log
+.vscode/
+.idea/
+
+# Test artifacts
+test-guardian-project/
