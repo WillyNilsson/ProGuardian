@@ -94,12 +94,14 @@ export function validateSafePath(targetPath, basePath = process.cwd()) {
   const isWindows = process.platform === 'win32'
   const targetToCheck = isWindows ? resolvedTarget.toLowerCase() : resolvedTarget
   const baseToCheck = isWindows ? resolvedBase.toLowerCase() : resolvedBase
-  
+
   // Ensure base path ends with separator for accurate prefix check
   const baseWithSep = baseToCheck.endsWith(path.sep) ? baseToCheck : baseToCheck + path.sep
-  
-  if (!targetToCheck.startsWith(baseToCheck) || 
-      (targetToCheck !== baseToCheck && !targetToCheck.startsWith(baseWithSep))) {
+
+  if (
+    !targetToCheck.startsWith(baseToCheck) ||
+    (targetToCheck !== baseToCheck && !targetToCheck.startsWith(baseWithSep))
+  ) {
     throw new PathTraversalError(targetPath)
   }
 

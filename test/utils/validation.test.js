@@ -30,7 +30,7 @@ describe('Validation Utils', () => {
         'deep/nested/path/file.txt',
         // Windows-style paths (without traversal)
         'subdir\\file.txt',
-        'deep\\nested\\path\\file.txt'
+        'deep\\nested\\path\\file.txt',
       ]
 
       for (const validPath of validPaths) {
