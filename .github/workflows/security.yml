@@ -127,7 +127,7 @@ jobs:
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ""  # Empty base for full repository scan
+          base: '' # Empty base for full repository scan
           head: HEAD
           extra_args: --debug --only-verified
 
