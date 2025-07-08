@@ -68,6 +68,7 @@ npm install -g @proguardian/cli
 ## Quick Start
 
 1.  **First, let your AI CLI analyze your project:**
+
     ```bash
     cd your-project
     claude init   # Creates CLAUDE.md with project understanding
@@ -76,6 +77,7 @@ npm install -g @proguardian/cli
     ```
 
 2.  **Then add Guardian supervision:**
+
     ```bash
     proguardian init   # Auto-detects and enhances the appropriate file
     ```
@@ -92,8 +94,8 @@ Hi I'm, **Willy Nilsson**, ([willynilsson.com](https://willynilsson.com)).
 I'm a builder and researcher focused on the practical application and deeper understanding of AI. And I'm open4work.
 Some of my other projects include:
 
--   **[AISReact.com](https://aisreact.com)**: A benchmark that hopes to evaluate different AI models not on performance, but on their inherent biases and worldviews.
--   **DeepOptimizer**: A tool that checks your code against published AI-techniques to identify potential improvements.
+- **[AISReact.com](https://aisreact.com)**: A benchmark that hopes to evaluate different AI models not on performance, but on their inherent biases and worldviews.
+- **DeepOptimizer**: A tool that checks your code against published AI-techniques to identify potential improvements.
 
 ## License
 
