@@ -112,7 +112,7 @@ export class CommandInjectionError extends SecurityError {
 export class FileOperationError extends ProGuardianError {
   constructor(operation, filePath, details) {
     const safePath = filePath ? path.basename(filePath) : 'file'
-    const message = `File operation failed: Cannot ${operation} ${safePath}${details ? ': ' + details : ''}`
+    const message = `File operation failed: Cannot ${operation} ${safePath}${details ? `: ${details}` : ''}`
     super(message, 'FILE_OPERATION_ERROR')
     this.operation = operation
     this.filePath = filePath
@@ -150,11 +150,11 @@ export function formatError(error, verbose = false) {
   }
 
   if (verbose && error.cause) {
-    result += '\nCaused by: ' + formatError(error.cause, verbose)
+    result += `\nCaused by: ${formatError(error.cause, verbose)}`
   }
 
   if (verbose && error.stack && process.env.NODE_ENV === 'development') {
-    result += '\n' + error.stack
+    result += `\n${error.stack}`
   }
 
   return result

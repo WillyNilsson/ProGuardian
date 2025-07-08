@@ -6,26 +6,34 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Security Scan](https://github.com/WillyNilsson/ProGuardian/workflows/Security/badge.svg)](https://github.com/WillyNilsson/ProGuardian/actions/workflows/security.yml)
 
-Guardian supervision for AI coding assistants. Ensures code quality, security, and best practices by transforming your AI assistant into a senior developer who delegates to and reviews its developers.
+Guardian 2.0 supervision for AI coding assistants. Ensures code quality, security, and best practices by transforming your AI assistant into a senior engineer who writes code with rigorous self-review.
 
 ## Why Does ProGuardian Exist?
 
 Modern AI coding assistants are incredibly powerful, but they have a fundamental limitation: their primary goal is **task completion**. This can lead them to take shortcuts, introduce subtle bugs, "cheat" on tests to make them pass, or write code that is functional but not maintainable or secure.
 
-ProGuardian addresses this by fundamentally reframing the AI's role. Instead of a developer focused on just getting the code written, the AI becomes a **Senior Developer (Guardian)** whose primary goal is **code quality and review**.
+ProGuardian addresses this by fundamentally reframing the AI's role. Instead of a developer focused on just getting the code written, the AI becomes a **Senior Engineer (Guardian)** whose primary goal is **code quality through direct implementation with rigorous self-review**.
 
-This psychological shift is the key. By giving the AI seniority and making its core task the enforcement of best practices, we change its objective from "completing the task" to "ensuring the task is done correctly." This allows developers to adopt a more hands-off, supervisory role, trusting that the Guardian is enforcing quality standards.
+### Guardian 2.0: A Better Approach
 
-This very project was built using the ProGuardian methodology with both Anthropic's Claude and Google's Gemini, hopefully serving as a testament to its effectiveness.
+The original Guardian protocol relied on delegation to subagents, which introduced accuracy problems due to context loss. Guardian 2.0 takes a different approach:
+
+- **Direct Implementation**: Senior engineers write critical code themselves
+- **Mechanical Self-Review**: Enforced review steps that require actual re-reading of code
+- **Safety Rails**: Protection against deletions, scope creep, and other disasters
+- **Penalties**: Real consequences for violations to reinforce proper behavior
+
+This psychological shift is the key. By making the AI responsible for both implementation AND review, with mechanical steps that can't be skipped, we ensure higher quality outcomes.
 
 ## How It Works
 
-ProGuardian **enhances** your existing `CLAUDE.md` or `GEMINI.md` by adding a Guardian section that:
+ProGuardian **enhances** your existing `CLAUDE.md` or `GEMINI.md` by adding the Guardian 2.0 protocol that:
 
 1.  Preserves your AI CLI's project understanding
-2.  Adds the Senior Developer identity and its corresponding psychological framework
-3.  Implements quality gates and mandatory review cycles
-4.  Maintains all your project-specific context
+2.  Adds the Senior Engineer identity with direct implementation responsibility
+3.  Implements mechanical review steps that can't be skipped
+4.  Adds safety rails to prevent common disasters
+5.  Maintains all your project-specific context
 
 Your enhanced file will look like:
 
@@ -36,12 +44,19 @@ Your enhanced file will look like:
 
 ## 🛡️ GUARDIAN MODE ACTIVE
 
-# GUARDIAN - Senior Developer Protocol
+# GUARDIAN 2.0 - Senior Engineer Protocol
 
-[Guardian instructions, checklists, workflows...]
+[Critical safety rails, mechanical review steps, penalties...]
 ```
 
 ## Key Features
+
+### Guardian 2.0 Safety Rails
+
+- 🛡️ **Deletion Protection**: Prevents unauthorized file/code deletion
+- 🛡️ **Scope Validation**: Ensures changes match what was requested
+- 🛡️ **Existing Code Check**: Prevents duplicate implementations
+- 🛡️ **Mechanical Review**: Forces actual re-reading of changes
 
 ### Prevents Common AI Issues
 
@@ -49,6 +64,8 @@ Your enhanced file will look like:
 - ❌ No placeholder code or TODOs
 - ❌ No shortcuts or quick fixes
 - ❌ No exposed secrets or security vulnerabilities
+- ❌ No scope creep or unwanted "improvements"
+- ❌ No skipping review steps
 
 ### Enforces Best Practices
 
@@ -58,6 +75,7 @@ Your enhanced file will look like:
 - ✅ Proper testing strategies
 - ✅ Clean, maintainable code
 - ✅ Production-ready implementations
+- ✅ Automatic issue fixes during review
 
 ## Installation
 
