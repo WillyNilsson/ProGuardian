@@ -32,7 +32,7 @@
     "which": "^4.0.0"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "repository": {
     "type": "git",

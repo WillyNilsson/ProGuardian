@@ -6,13 +6,13 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Security Scan](https://github.com/WillyNilsson/ProGuardian/workflows/Security/badge.svg)](https://github.com/WillyNilsson/ProGuardian/actions/workflows/security.yml)
 
-Guardian 2.0 supervision for AI coding assistants. Ensures code quality, security, and best practices by transforming your AI assistant into a senior engineer who writes code with rigorous self-review.
+Guardian 2.0 supervision for AI coding assistants. Aims to improve code quality, security, and best practices by transforming your AI assistant into a senior engineer who writes code with rigorous self-review.
 
 ## Why Does ProGuardian Exist?
 
 Modern AI coding assistants are incredibly powerful, but they have a fundamental limitation: their primary goal is **task completion**. This can lead them to take shortcuts, introduce subtle bugs, "cheat" on tests to make them pass, or write code that is functional but not maintainable or secure.
 
-ProGuardian addresses this by fundamentally reframing the AI's role. Instead of a developer focused on just getting the code written, the AI becomes a **Senior Engineer (Guardian)** whose primary goal is **code quality through direct implementation with rigorous self-review**.
+ProGuardian attempts to address this by fundamentally reframing the AI's role. Instead of a developer focused on just getting the code written, the AI is encouraged to act as a **Senior Engineer (Guardian)** whose primary goal is **code quality through direct implementation with rigorous self-review**.
 
 ### Guardian 2.0: A Better Approach
 
@@ -23,7 +23,7 @@ The original Guardian protocol relied on delegation to subagents, which introduc
 - **Safety Rails**: Protection against deletions, scope creep, and other disasters
 - **Penalties**: Real consequences for violations to reinforce proper behavior
 
-This psychological shift is the key. By making the AI responsible for both implementation AND review, with mechanical steps that can't be skipped, we ensure higher quality outcomes.
+This psychological shift is the key. By making the AI responsible for both implementation AND review, with mechanical steps that are designed to be followed, we aim for higher quality outcomes.
 
 ## How It Works
 
@@ -31,8 +31,8 @@ ProGuardian **enhances** your existing `CLAUDE.md` or `GEMINI.md` by adding the 
 
 1.  Preserves your AI CLI's project understanding
 2.  Adds the Senior Engineer identity with direct implementation responsibility
-3.  Implements mechanical review steps that can't be skipped
-4.  Adds safety rails to prevent common disasters
+3.  Implements mechanical review steps designed to encourage thorough review
+4.  Adds safety rails to help reduce common issues
 5.  Maintains all your project-specific context
 
 Your enhanced file will look like:
@@ -53,21 +53,21 @@ Your enhanced file will look like:
 
 ### Guardian 2.0 Safety Rails
 
-- 🛡️ **Deletion Protection**: Prevents unauthorized file/code deletion
-- 🛡️ **Scope Validation**: Ensures changes match what was requested
-- 🛡️ **Existing Code Check**: Prevents duplicate implementations
-- 🛡️ **Mechanical Review**: Forces actual re-reading of changes
+- 🛡️ **Deletion Protection**: Helps prevent unauthorized file/code deletion
+- 🛡️ **Scope Validation**: Encourages changes to match what was requested
+- 🛡️ **Existing Code Check**: Helps avoid duplicate implementations
+- 🛡️ **Mechanical Review**: Encourages actual re-reading of changes
 
-### Prevents Common AI Issues
+### Helps Reduce Common AI Issues
 
-- ❌ No more test cheating (modifying tests to pass)
-- ❌ No placeholder code or TODOs
-- ❌ No shortcuts or quick fixes
-- ❌ No exposed secrets or security vulnerabilities
-- ❌ No scope creep or unwanted "improvements"
-- ❌ No skipping review steps
+- ❌ Test cheating (modifying tests to pass)
+- ❌ Placeholder code or TODOs
+- ❌ Shortcuts or quick fixes
+- ❌ Exposed secrets or security vulnerabilities
+- ❌ Scope creep or unwanted "improvements"
+- ❌ Skipping review steps
 
-### Enforces Best Practices
+### Encourages Best Practices
 
 - ✅ Comprehensive error handling
 - ✅ Security-first approach

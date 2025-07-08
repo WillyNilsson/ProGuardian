@@ -27,7 +27,7 @@ export function sanitizeErrorMessage(message) {
   // Remove paths - handle relative paths FIRST to avoid partial matches
   // Relative paths: ../path or ./path (must have at least one slash)
   safe = safe.replace(/\.{1,2}([\\/][^\s"'<>|]*)+/g, '<path>')
-  
+
   // Then handle absolute paths
   // Windows absolute paths: C:\path or C:/path
   safe = safe.replace(/[a-zA-Z]:[\\//][^\s"'<>|]+/g, '<path>')
@@ -37,13 +37,16 @@ export function sanitizeErrorMessage(message) {
   safe = safe.replace(/\\\\[^\s"'<>|]+/g, '<path>')
 
   // Remove UUIDs BEFORE other ID replacements
-  safe = safe.replace(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g, '<uuid>')
+  safe = safe.replace(
+    /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g,
+    '<uuid>',
+  )
 
   // Remove potential sensitive data patterns
   safe = safe.replace(/\b\d{4,}\b/g, '<id>') // IDs (4+ digits)
   safe = safe.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '<email>') // Emails
   safe = safe.replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '<ip>') // IPv4 addresses
-  
+
   // Remove potential tokens/secrets (long hex strings, base64-like strings)
   safe = safe.replace(/\b[a-fA-F0-9]{32,}\b/g, '<token>') // Hex tokens (32+ chars)
   safe = safe.replace(/[A-Za-z0-9+/]{20,}={0,2}/g, '<token>') // Base64-like tokens
