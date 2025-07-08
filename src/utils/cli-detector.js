@@ -187,5 +187,5 @@ export async function determineCLI(options) {
   }
 
   // If both are available, prompt user
-  return await promptForCLIAsync(available)
+  return promptForCLIAsync(available)
 }

@@ -144,7 +144,7 @@ describe('CLI Detector Extended Tests', () => {
       assert(result === CLI_CLAUDE || result === CLI_GEMINI || result === null)
 
       if (result === null) {
-        assert(consoleOutput.some((line) => line.includes('No AI CLI tools detected')))
+        assert(consoleErrors.some((line) => line.includes('No AI CLI tools detected')))
       }
     })
 

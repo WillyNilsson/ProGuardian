@@ -98,7 +98,7 @@ describe('CLI Detector Module Coverage Tests', () => {
       assert(content.includes('Detected Gemini CLI'))
 
       // Check prompt scenario
-      assert(content.includes('return await promptForCLIAsync(available)'))
+      assert(content.includes('return promptForCLIAsync(available)'))
     })
 
     it('should format prompt messages correctly', async () => {

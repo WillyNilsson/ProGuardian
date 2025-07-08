@@ -111,7 +111,7 @@ npm test
 - **ALWAYS consider security**: This handles user data and money
 
 # CONTEXT:
-[Project-specific context from gemini init will appear here, including:
+[Project-specific context from gemini init above, including:
 - Technology stack
 - Project structure  
 - Existing patterns
