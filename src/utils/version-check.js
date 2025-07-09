@@ -7,6 +7,7 @@ import https from 'https'
 import path from 'path'
 import os from 'os'
 import { fileURLToPath } from 'url'
+import { setTimeout } from 'timers'
 import fs from 'fs-extra'
 import { logger } from './logger.js'
 import chalk from 'chalk'
@@ -55,7 +56,7 @@ async function writeCache(data) {
     const cachePath = getCacheFilePath()
     await fs.writeFile(cachePath, JSON.stringify(data, null, 2), { 
       encoding: 'utf-8',
-      mode: 0o600 
+      mode: 0o600,
     })
   } catch {
     // Ignore cache write errors
@@ -114,11 +115,11 @@ function fetchPackageInfo(packageName) {
 function isNewerVersion(current, latest) {
   try {
     // Remove 'v' prefix if present
-    current = current.replace(/^v/, '')
-    latest = latest.replace(/^v/, '')
+    const currentClean = current.replace(/^v/, '')
+    const latestClean = latest.replace(/^v/, '')
 
-    const currentParts = current.split('.').map(Number)
-    const latestParts = latest.split('.').map(Number)
+    const currentParts = currentClean.split('.').map(Number)
+    const latestParts = latestClean.split('.').map(Number)
 
     for (let i = 0; i < 3; i++) {
       const currentPart = currentParts[i] || 0
@@ -179,7 +180,69 @@ ${chalk.yellow('│')}  ${logger.dim('Disable this check with PROGUARDIAN_NO_UPD
 ${chalk.yellow('│')}                                                     ${chalk.yellow('│')}
 ${chalk.yellow('╰─────────────────────────────────────────────────────╯')}
 `
-  console.log(updateMessage)
+  logger.log(updateMessage)
+}
+
+/**
+ * Handle cached update check
+ * @param {Object} cache - Cache data
+ * @param {string} currentVersion - Current version
+ * @param {number} now - Current timestamp
+ * @returns {boolean} True if handled
+ */
+async function handleCachedCheck(cache, currentVersion, now) {
+  if (!cache || !cache.lastCheck || (now - cache.lastCheck) >= CHECK_INTERVAL) {
+    return false
+  }
+
+  if (
+    cache.latestVersion &&
+    isNewerVersion(currentVersion, cache.latestVersion) &&
+    cache.notified !== cache.latestVersion
+  ) {
+    showUpdateNotification(currentVersion, cache.latestVersion)
+    // Mark this version as notified
+    await writeCache({
+      ...cache,
+      notified: cache.latestVersion,
+    })
+  }
+  return true
+}
+
+/**
+ * Handle fresh update check
+ * @param {string} currentVersion - Current version
+ * @param {Object} cache - Existing cache data
+ * @param {number} now - Current timestamp
+ */
+async function handleFreshCheck(currentVersion, cache, now) {
+  // Fetch latest version
+  const packageInfo = await fetchPackageInfo(PACKAGE_NAME)
+  if (!packageInfo || !packageInfo['dist-tags'] || !packageInfo['dist-tags'].latest) {
+    return
+  }
+
+  const latestVersion = packageInfo['dist-tags'].latest
+
+  // Update cache
+  await writeCache({
+    lastCheck: now,
+    latestVersion,
+    currentVersion,
+    notified: cache?.notified,
+  })
+
+  // Show notification if update available
+  if (isNewerVersion(currentVersion, latestVersion)) {
+    showUpdateNotification(currentVersion, latestVersion)
+    await writeCache({
+      lastCheck: now,
+      latestVersion,
+      currentVersion,
+      notified: latestVersion,
+    })
+  }
 }
 
 /**
@@ -203,46 +266,14 @@ export async function checkForUpdates() {
     const cache = await readCache()
     const now = Date.now()
 
-    // If cache is fresh, check if we need to show notification
-    if (cache && cache.lastCheck && (now - cache.lastCheck) < CHECK_INTERVAL) {
-      if (cache.latestVersion && cache.notified !== cache.latestVersion) {
-        if (isNewerVersion(currentVersion, cache.latestVersion)) {
-          showUpdateNotification(currentVersion, cache.latestVersion)
-          await writeCache({
-            ...cache,
-            notified: cache.latestVersion,
-          })
-        }
-      }
+    // Handle cached check
+    const handled = await handleCachedCheck(cache, currentVersion, now)
+    if (handled) {
       return
     }
 
-    // Fetch latest version
-    const packageInfo = await fetchPackageInfo(PACKAGE_NAME)
-    if (!packageInfo || !packageInfo['dist-tags'] || !packageInfo['dist-tags'].latest) {
-      return
-    }
-
-    const latestVersion = packageInfo['dist-tags'].latest
-
-    // Update cache
-    await writeCache({
-      lastCheck: now,
-      latestVersion,
-      currentVersion,
-      notified: cache?.notified,
-    })
-
-    // Show notification if update available
-    if (isNewerVersion(currentVersion, latestVersion)) {
-      showUpdateNotification(currentVersion, latestVersion)
-      await writeCache({
-        lastCheck: now,
-        latestVersion,
-        currentVersion,
-        notified: latestVersion,
-      })
-    }
+    // Handle fresh check
+    await handleFreshCheck(currentVersion, cache, now)
   } catch {
     // Silently ignore all errors - update check should never break the CLI
   }
@@ -253,10 +284,10 @@ export async function checkForUpdates() {
  * This returns immediately and runs the check asynchronously
  */
 export function checkForUpdatesInBackground() {
-  // Use setImmediate to ensure this doesn't block the main thread
-  setImmediate(() => {
+  // Use setTimeout with 0 delay to ensure this doesn't block the main thread
+  setTimeout(() => {
     checkForUpdates().catch(() => {
       // Ignore errors - update check should never break the CLI
     })
-  })
+  }, 0)
 }

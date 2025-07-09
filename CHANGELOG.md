@@ -9,10 +9,20 @@ All notable changes to this project will be documented in this file.
 - Helpful command examples in README for common ProGuardian prompts
 - Quick copy-paste commands for enforcing Guardian protocol
 - Common scenario examples for real-world usage
-
-### Coming Soon
-
 - Version check utility for update notifications (like Claude Code)
+- Automated npm publishing workflow for GitHub releases
+
+### Fixed
+
+- Version check duplicate notification bug
+- Path traversal security error when running from different directories
+- Linting errors in version-check.js and install-wrapper.js
+- Test failures in version-check tests due to logger output handling
+
+### Changed
+
+- Enhanced npm-GitHub integration with bugs and homepage fields
+- Improved version check logic to prevent showing same notification twice
 
 ## [0.3.0] - 2024-12-08
 

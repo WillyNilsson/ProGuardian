@@ -96,7 +96,7 @@ The AI should now follow the Guardian protocol - planning before coding, reviewi
 
 ### Quick Copy-Paste Commands for Your AI
 
-When working with your AI assistant, you can use these prompts to ensure it follows the Guardian protocol:
+When working with your AI assistant, you can use these prompts to help it follow the Guardian protocol:
 
 ```bash
 # Initial project check
@@ -157,11 +157,11 @@ ProGuardian automatically checks for updates in the background (similar to Claud
 ```
 ╭─────────────────────────────────────────────────────╮
 │                                                     │
-│  Update available! 0.3.0 → 1.0.0                   │
+│  Update available! 0.3.0 → 1.0.0                    │
 │                                                     │
-│  Run npm update -g @proguardian/cli to update      │
+│  Run npm update -g @proguardian/cli to update       │
 │                                                     │
-│  Disable this check with PROGUARDIAN_NO_UPDATE_CHECK=1 │
+│  Disable check with PROGUARDIAN_NO_UPDATE_CHECK=1   │
 │                                                     │
 ╰─────────────────────────────────────────────────────╯
 ```

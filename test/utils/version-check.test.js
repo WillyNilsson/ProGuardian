@@ -7,6 +7,7 @@ import { EventEmitter } from 'events'
 import { checkForUpdates, checkForUpdatesInBackground } from '../../src/utils/version-check.js'
 import fs from 'fs-extra'
 import { createTestContext } from '../helpers/test-utils.js'
+import { logger } from '../../src/utils/logger.js'
 
 // Mock HTTPS module
 const originalHttpsGet = https.get
@@ -16,6 +17,7 @@ describe('Version Check Tests', () => {
   let context
   let originalEnv
   let cacheFilePath
+  let originalLogHandler
 
   beforeEach(async () => {
     context = await createTestContext()
@@ -30,6 +32,12 @@ describe('Version Check Tests', () => {
 
     // Mock console to capture output
     context.consoleMock.capture()
+
+    // Also mock the logger's output handler
+    originalLogHandler = logger.outputHandlers.log
+    logger.setOutputHandler('log', (...args) => {
+      context.consoleMock.getLogs().push(args.join(' '))
+    })
 
     // Setup HTTPS mock
     mockHttpsGet = (url, options, callback) => {
@@ -62,6 +70,9 @@ describe('Version Check Tests', () => {
     
     // Restore console
     context.consoleMock.restore()
+    
+    // Restore logger
+    logger.setOutputHandler('log', originalLogHandler)
     
     // Restore HTTPS
     https.get = originalHttpsGet

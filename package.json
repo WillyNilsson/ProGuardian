@@ -1,6 +1,6 @@
 {
   "name": "@proguardian/cli",
-  "version": "v1.0.0",
+  "version": "1.0.1",
   "description": "Guardian supervision layer for AI coding assistants",
   "type": "module",
   "main": "src/index.js",

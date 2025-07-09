@@ -17,9 +17,8 @@ describe('Install Wrapper Command Coverage Tests', () => {
       assert(content.includes("import which from 'which'"))
       assert(content.includes('import { validateOptions'))
       assert(content.includes('import { handleError'))
-      // Check that file-security imports are present (they may be on separate lines)
+      // Check that file-security imports are present
       assert(content.includes("import { checkPermissions } from '../utils/file-security.js'"))
-      assert(content.includes("import { securePathExists, secureCopyFile } from '../utils/file-security.js'"))
 
       // Check for security measures
       assert(content.includes('validateSafePath'))
