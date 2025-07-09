@@ -54,7 +54,7 @@ async function readCache() {
 async function writeCache(data) {
   try {
     const cachePath = getCacheFilePath()
-    await fs.writeFile(cachePath, JSON.stringify(data, null, 2), { 
+    await fs.writeFile(cachePath, JSON.stringify(data, null, 2), {
       encoding: 'utf-8',
       mode: 0o600,
     })
@@ -71,7 +71,7 @@ async function writeCache(data) {
 function fetchPackageInfo(packageName) {
   return new Promise((resolve) => {
     const url = `${REGISTRY_URL}/${encodeURIComponent(packageName)}`
-    
+
     const req = https.get(url, { timeout: REQUEST_TIMEOUT }, (res) => {
       if (res.statusCode !== 200) {
         resolve(null)
@@ -82,7 +82,8 @@ function fetchPackageInfo(packageName) {
       res.on('data', (chunk) => {
         data += chunk
         // Limit response size to prevent memory issues
-        if (data.length > 100000) { // 100KB max
+        if (data.length > 100000) {
+          // 100KB max
           req.destroy()
           resolve(null)
         }
@@ -155,11 +156,12 @@ async function getCurrentVersion() {
  * @returns {boolean} True if disabled
  */
 function isCheckDisabled() {
-  const disabled = process.env.PROGUARDIAN_NO_UPDATE_CHECK || 
-                  process.env.NO_UPDATE_NOTIFIER ||
-                  process.env.CI ||
-                  process.env.CONTINUOUS_INTEGRATION
-  
+  const disabled =
+    process.env.PROGUARDIAN_NO_UPDATE_CHECK ||
+    process.env.NO_UPDATE_NOTIFIER ||
+    process.env.CI ||
+    process.env.CONTINUOUS_INTEGRATION
+
   return disabled === '1' || disabled === 'true'
 }
 
@@ -191,7 +193,7 @@ ${chalk.yellow('╰────────────────────�
  * @returns {boolean} True if handled
  */
 async function handleCachedCheck(cache, currentVersion, now) {
-  if (!cache || !cache.lastCheck || (now - cache.lastCheck) >= CHECK_INTERVAL) {
+  if (!cache || !cache.lastCheck || now - cache.lastCheck >= CHECK_INTERVAL) {
     return false
   }
 

@@ -127,6 +127,7 @@ When working with your AI assistant, you can use these prompts to help it follow
 ### Common Scenarios
 
 **Starting a new project:**
+
 ```bash
 claude init
 proguardian init
@@ -134,16 +135,19 @@ claude "Set up a Node.js Express API with PostgreSQL following Guardian standard
 ```
 
 **Adding a complex feature:**
+
 ```bash
 claude "Follow the ProGuardian workflow to implement user authentication with JWT"
 ```
 
 **Fixing bugs without compromising tests:**
+
 ```bash
 claude "Tests are failing. Follow Guardian protocol: diagnose, fix code (not tests), verify"
 ```
 
 **Ensuring production readiness:**
+
 ```bash
 claude "Review this codebase against the Guardian production checklist"
 ```
@@ -192,5 +196,4 @@ Apache 2.0.
 
 ---
 
-*ProGuardian is a personal project not affiliated with Anthropic (Claude) or Google (Gemini), though I would obviously love for that to change.*
-
+_ProGuardian is a personal project not affiliated with Anthropic (Claude) or Google (Gemini), though I would obviously love for that to change._

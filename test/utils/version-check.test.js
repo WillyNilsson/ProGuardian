@@ -23,7 +23,7 @@ describe('Version Check Tests', () => {
     context = await createTestContext()
     originalEnv = { ...process.env }
     cacheFilePath = path.join(os.tmpdir(), '.proguardian-update-check.json')
-    
+
     // Clear environment variables
     delete process.env.PROGUARDIAN_NO_UPDATE_CHECK
     delete process.env.NO_UPDATE_NOTIFIER
@@ -44,108 +44,111 @@ describe('Version Check Tests', () => {
       const res = new EventEmitter()
       res.statusCode = 200
       res.on = res.addListener
-      
+
       const req = new EventEmitter()
       req.on = req.addListener
       req.destroy = () => {}
-      
+
       // Handle callback
       if (typeof options === 'function') {
         callback = options
       }
-      
+
       setImmediate(() => {
         callback(res)
       })
-      
+
       return req
     }
-    
+
     https.get = mockHttpsGet
   })
 
   afterEach(async () => {
     // Restore environment
     process.env = originalEnv
-    
+
     // Restore console
     context.consoleMock.restore()
-    
+
     // Restore logger
     logger.setOutputHandler('log', originalLogHandler)
-    
+
     // Restore HTTPS
     https.get = originalHttpsGet
-    
+
     // Clean up cache file
     try {
       await fs.unlink(cacheFilePath)
     } catch {
       // Ignore if doesn't exist
     }
-    
+
     await context.cleanup()
   })
 
   describe('checkForUpdates', () => {
     it('should skip check when PROGUARDIAN_NO_UPDATE_CHECK is set', async () => {
       process.env.PROGUARDIAN_NO_UPDATE_CHECK = '1'
-      
+
       let httpsCalled = false
       https.get = () => {
         httpsCalled = true
         return new EventEmitter()
       }
-      
+
       await checkForUpdates()
-      
+
       assert.equal(httpsCalled, false, 'Should not make HTTP request when disabled')
     })
 
     it('should skip check when CI environment is detected', async () => {
       process.env.CI = 'true'
-      
+
       let httpsCalled = false
       https.get = () => {
         httpsCalled = true
         return new EventEmitter()
       }
-      
+
       await checkForUpdates()
-      
+
       assert.equal(httpsCalled, false, 'Should not make HTTP request in CI')
     })
 
     it('should check npm registry for updates', async () => {
       let requestUrl = null
-      
+
       https.get = (url, options, callback) => {
         requestUrl = url
         const res = new EventEmitter()
         res.statusCode = 200
-        
+
         const req = new EventEmitter()
         req.destroy = () => {}
-        
+
         if (typeof options === 'function') {
           callback = options
         }
-        
+
         setImmediate(() => {
           callback(res)
           setImmediate(() => {
-            res.emit('data', JSON.stringify({
-              'dist-tags': { latest: '1.0.0' }
-            }))
+            res.emit(
+              'data',
+              JSON.stringify({
+                'dist-tags': { latest: '1.0.0' },
+              }),
+            )
             res.emit('end')
           })
         })
-        
+
         return req
       }
-      
+
       await checkForUpdates()
-      
+
       assert.equal(requestUrl, 'https://registry.npmjs.org/%40proguardian%2Fcli')
     })
 
@@ -153,32 +156,35 @@ describe('Version Check Tests', () => {
       https.get = (url, options, callback) => {
         const res = new EventEmitter()
         res.statusCode = 200
-        
+
         const req = new EventEmitter()
         req.destroy = () => {}
-        
+
         if (typeof options === 'function') {
           callback = options
         }
-        
+
         setImmediate(() => {
           callback(res)
           setImmediate(() => {
-            res.emit('data', JSON.stringify({
-              'dist-tags': { latest: '99.0.0' } // Much newer version
-            }))
+            res.emit(
+              'data',
+              JSON.stringify({
+                'dist-tags': { latest: '99.0.0' }, // Much newer version
+              }),
+            )
             res.emit('end')
           })
         })
-        
+
         return req
       }
-      
+
       await checkForUpdates()
-      
+
       const logs = context.consoleMock.getLogs()
       const output = logs.join('\n')
-      
+
       assert.ok(output.includes('Update available!'), 'Should show update notification')
       assert.ok(output.includes('99.0.0'), 'Should show new version')
       assert.ok(output.includes('npm update -g @proguardian/cli'), 'Should show update command')
@@ -190,36 +196,39 @@ describe('Version Check Tests', () => {
       const content = await fs.readFile(packagePath, 'utf-8')
       const packageData = JSON.parse(content)
       const currentVersion = packageData.version
-      
+
       https.get = (url, options, callback) => {
         const res = new EventEmitter()
         res.statusCode = 200
-        
+
         const req = new EventEmitter()
         req.destroy = () => {}
-        
+
         if (typeof options === 'function') {
           callback = options
         }
-        
+
         setImmediate(() => {
           callback(res)
           setImmediate(() => {
-            res.emit('data', JSON.stringify({
-              'dist-tags': { latest: currentVersion } // Same version
-            }))
+            res.emit(
+              'data',
+              JSON.stringify({
+                'dist-tags': { latest: currentVersion }, // Same version
+              }),
+            )
             res.emit('end')
           })
         })
-        
+
         return req
       }
-      
+
       await checkForUpdates()
-      
+
       const logs = context.consoleMock.getLogs()
       const output = logs.join('\n')
-      
+
       assert.ok(!output.includes('Update available!'), 'Should not show update notification')
     })
 
@@ -227,17 +236,17 @@ describe('Version Check Tests', () => {
       https.get = (url, options, callback) => {
         const req = new EventEmitter()
         req.destroy = () => {}
-        
+
         setImmediate(() => {
           req.emit('error', new Error('Network error'))
         })
-        
+
         return req
       }
-      
+
       // Should not throw
       await checkForUpdates()
-      
+
       const errors = context.consoleMock.getErrors()
       assert.equal(errors.length, 0, 'Should not log errors')
     })
@@ -246,17 +255,17 @@ describe('Version Check Tests', () => {
       https.get = (url, options, callback) => {
         const req = new EventEmitter()
         req.destroy = () => {}
-        
+
         setImmediate(() => {
           req.emit('timeout')
         })
-        
+
         return req
       }
-      
+
       // Should not throw
       await checkForUpdates()
-      
+
       const errors = context.consoleMock.getErrors()
       assert.equal(errors.length, 0, 'Should not log errors')
     })
@@ -265,14 +274,14 @@ describe('Version Check Tests', () => {
       https.get = (url, options, callback) => {
         const res = new EventEmitter()
         res.statusCode = 200
-        
+
         const req = new EventEmitter()
         req.destroy = () => {}
-        
+
         if (typeof options === 'function') {
           callback = options
         }
-        
+
         setImmediate(() => {
           callback(res)
           setImmediate(() => {
@@ -280,13 +289,13 @@ describe('Version Check Tests', () => {
             res.emit('end')
           })
         })
-        
+
         return req
       }
-      
+
       // Should not throw
       await checkForUpdates()
-      
+
       const errors = context.consoleMock.getErrors()
       assert.equal(errors.length, 0, 'Should not log errors')
     })
@@ -295,42 +304,44 @@ describe('Version Check Tests', () => {
       https.get = (url, options, callback) => {
         const res = new EventEmitter()
         res.statusCode = 404
-        
+
         const req = new EventEmitter()
         req.destroy = () => {}
-        
+
         if (typeof options === 'function') {
           callback = options
         }
-        
+
         setImmediate(() => {
           callback(res)
         })
-        
+
         return req
       }
-      
+
       // Should not throw
       await checkForUpdates()
-      
+
       const errors = context.consoleMock.getErrors()
       assert.equal(errors.length, 0, 'Should not log errors')
     })
 
     it('should limit response size to prevent memory issues', async () => {
       let requestDestroyed = false
-      
+
       https.get = (url, options, callback) => {
         const res = new EventEmitter()
         res.statusCode = 200
-        
+
         const req = new EventEmitter()
-        req.destroy = () => { requestDestroyed = true }
-        
+        req.destroy = () => {
+          requestDestroyed = true
+        }
+
         if (typeof options === 'function') {
           callback = options
         }
-        
+
         setImmediate(() => {
           callback(res)
           // Send large chunks of data
@@ -338,47 +349,50 @@ describe('Version Check Tests', () => {
             res.emit('data', 'x'.repeat(10000))
           }
         })
-        
+
         return req
       }
-      
+
       await checkForUpdates()
-      
+
       assert.ok(requestDestroyed, 'Should destroy request when response is too large')
     })
 
     it('should use cache to avoid frequent checks', async () => {
       let requestCount = 0
-      
+
       https.get = (url, options, callback) => {
         requestCount++
         const res = new EventEmitter()
         res.statusCode = 200
-        
+
         const req = new EventEmitter()
         req.destroy = () => {}
-        
+
         if (typeof options === 'function') {
           callback = options
         }
-        
+
         setImmediate(() => {
           callback(res)
           setImmediate(() => {
-            res.emit('data', JSON.stringify({
-              'dist-tags': { latest: '1.0.0' }
-            }))
+            res.emit(
+              'data',
+              JSON.stringify({
+                'dist-tags': { latest: '1.0.0' },
+              }),
+            )
             res.emit('end')
           })
         })
-        
+
         return req
       }
-      
+
       // First check
       await checkForUpdates()
       assert.equal(requestCount, 1, 'Should make first request')
-      
+
       // Second check (should use cache)
       await checkForUpdates()
       assert.equal(requestCount, 1, 'Should not make second request due to cache')
@@ -388,33 +402,36 @@ describe('Version Check Tests', () => {
       https.get = (url, options, callback) => {
         const res = new EventEmitter()
         res.statusCode = 200
-        
+
         const req = new EventEmitter()
         req.destroy = () => {}
-        
+
         if (typeof options === 'function') {
           callback = options
         }
-        
+
         setImmediate(() => {
           callback(res)
           setImmediate(() => {
-            res.emit('data', JSON.stringify({
-              'dist-tags': { latest: '1.0.0' }
-            }))
+            res.emit(
+              'data',
+              JSON.stringify({
+                'dist-tags': { latest: '1.0.0' },
+              }),
+            )
             res.emit('end')
           })
         })
-        
+
         return req
       }
-      
+
       await checkForUpdates()
-      
+
       // Check cache file was created
       const cacheExists = await fs.pathExists(cacheFilePath)
       assert.ok(cacheExists, 'Cache file should exist')
-      
+
       // Check cache content
       const content = await fs.readFile(cacheFilePath, 'utf-8')
       const cache = JSON.parse(content)
@@ -434,7 +451,7 @@ describe('Version Check Tests', () => {
         { current: '1.0.0', latest: '1.0.0', shouldUpdate: false },
         { current: 'v1.0.0', latest: 'v2.0.0', shouldUpdate: true }, // With v prefix
       ]
-      
+
       for (const testCase of testCases) {
         // Write a fake package.json with test version
         const packagePath = path.join(process.cwd(), 'package.json')
@@ -442,50 +459,53 @@ describe('Version Check Tests', () => {
         const packageData = JSON.parse(content)
         packageData.version = testCase.current
         await fs.writeFile(packagePath, JSON.stringify(packageData, null, 2))
-        
+
         context.consoleMock.clear()
-        
+
         https.get = (url, options, callback) => {
           const res = new EventEmitter()
           res.statusCode = 200
-          
+
           const req = new EventEmitter()
           req.destroy = () => {}
-          
+
           if (typeof options === 'function') {
             callback = options
           }
-          
+
           setImmediate(() => {
             callback(res)
             setImmediate(() => {
-              res.emit('data', JSON.stringify({
-                'dist-tags': { latest: testCase.latest }
-              }))
+              res.emit(
+                'data',
+                JSON.stringify({
+                  'dist-tags': { latest: testCase.latest },
+                }),
+              )
               res.emit('end')
             })
           })
-          
+
           return req
         }
-        
+
         // Clear cache for fresh check
         try {
           await fs.unlink(cacheFilePath)
         } catch {
           // Ignore
         }
-        
+
         await checkForUpdates()
-        
+
         const logs = context.consoleMock.getLogs()
         const output = logs.join('\n')
         const hasNotification = output.includes('Update available!')
-        
+
         assert.equal(
           hasNotification,
           testCase.shouldUpdate,
-          `Version ${testCase.current} -> ${testCase.latest} should${testCase.shouldUpdate ? '' : ' not'} show update`
+          `Version ${testCase.current} -> ${testCase.latest} should${testCase.shouldUpdate ? '' : ' not'} show update`,
         )
       }
     })
@@ -495,17 +515,17 @@ describe('Version Check Tests', () => {
     it('should run asynchronously without blocking', (t, done) => {
       let checkStarted = false
       let immediateExecuted = false
-      
+
       https.get = () => {
         checkStarted = true
         const req = new EventEmitter()
         req.destroy = () => {}
         return req
       }
-      
+
       // This should return immediately
       checkForUpdatesInBackground()
-      
+
       // This should execute before the update check
       setImmediate(() => {
         immediateExecuted = true
@@ -518,10 +538,10 @@ describe('Version Check Tests', () => {
       https.get = () => {
         throw new Error('Network error')
       }
-      
+
       // Should not throw
       checkForUpdatesInBackground()
-      
+
       // Give it time to potentially fail
       setTimeout(() => {
         // If we get here, it didn't crash
@@ -533,93 +553,106 @@ describe('Version Check Tests', () => {
   describe('cache behavior', () => {
     it('should only show notification once per version', async () => {
       let notificationCount = 0
-      
+
       https.get = (url, options, callback) => {
         const res = new EventEmitter()
         res.statusCode = 200
-        
+
         const req = new EventEmitter()
         req.destroy = () => {}
-        
+
         if (typeof options === 'function') {
           callback = options
         }
-        
+
         setImmediate(() => {
           callback(res)
           setImmediate(() => {
-            res.emit('data', JSON.stringify({
-              'dist-tags': { latest: '99.0.0' }
-            }))
+            res.emit(
+              'data',
+              JSON.stringify({
+                'dist-tags': { latest: '99.0.0' },
+              }),
+            )
             res.emit('end')
           })
         })
-        
+
         return req
       }
-      
+
       // First check - should show notification
       await checkForUpdates()
       const logs1 = context.consoleMock.getLogs()
       if (logs1.join('\n').includes('Update available!')) {
         notificationCount++
       }
-      
+
       // Write cache to simulate immediate second check
       const content = await fs.readFile(cacheFilePath, 'utf-8')
       const cache = JSON.parse(content)
       cache.lastCheck = Date.now() - 1000 // Recent check
       await fs.writeFile(cacheFilePath, JSON.stringify(cache, null, 2))
-      
+
       context.consoleMock.clear()
-      
+
       // Second check - should not show notification again
       await checkForUpdates()
       const logs2 = context.consoleMock.getLogs()
       if (logs2.join('\n').includes('Update available!')) {
         notificationCount++
       }
-      
+
       assert.equal(notificationCount, 1, 'Should only show notification once')
     })
 
     it('should check again after cache expires', async () => {
       let requestCount = 0
-      
+
       https.get = (url, options, callback) => {
         requestCount++
         const res = new EventEmitter()
         res.statusCode = 200
-        
+
         const req = new EventEmitter()
         req.destroy = () => {}
-        
+
         if (typeof options === 'function') {
           callback = options
         }
-        
+
         setImmediate(() => {
           callback(res)
           setImmediate(() => {
-            res.emit('data', JSON.stringify({
-              'dist-tags': { latest: '1.0.0' }
-            }))
+            res.emit(
+              'data',
+              JSON.stringify({
+                'dist-tags': { latest: '1.0.0' },
+              }),
+            )
             res.emit('end')
           })
         })
-        
+
         return req
       }
-      
+
       // Write expired cache
-      await fs.writeFile(cacheFilePath, JSON.stringify({
-        lastCheck: Date.now() - (25 * 60 * 60 * 1000), // 25 hours ago
-        latestVersion: '1.0.0',
-        currentVersion: '0.1.0',
-      }, null, 2))
-      
+      await fs.writeFile(
+        cacheFilePath,
+        JSON.stringify(
+          {
+            lastCheck: Date.now() - 25 * 60 * 60 * 1000, // 25 hours ago
+            latestVersion: '1.0.0',
+            currentVersion: '0.1.0',
+          },
+          null,
+          2,
+        ),
+      )
+
       await checkForUpdates()
-      
+
       assert.equal(requestCount, 1, 'Should make new request when cache is expired')
     })
   })
