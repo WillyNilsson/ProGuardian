@@ -58,7 +58,6 @@ grep -r "eval\|innerHTML\|password.*=" .
 ✓ SQL queries parameterized
 ✓ Auth checks present
 ✓ No hardcoded values
-✓ Functions under 20 lines
 **Decision: [PASS/FAIL]** → If FAIL, return to Step 3
 
 ## STEP 7: Plan Tests
@@ -126,6 +125,7 @@ npm test
 - **NEVER proceed with failing tests**: Fix the root cause, don't weaken tests
 - **NEVER use generic error handling**: catch(e) { console.log(e) } is forbidden
 - **NEVER hardcode values**: No localhost URLs, passwords, or API keys in code
+- **NEVER make unasked changes**: Don't remove/change things the user didn't request
 - **NEVER trust without verification**: Show grep output, test results, actual evidence
 - **ALWAYS re-read your code**: Use Read tool to see what you actually wrote
 - **ALWAYS test error paths**: Happy path only = incomplete

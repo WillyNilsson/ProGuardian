@@ -23,6 +23,8 @@ All notable changes to this project will be documented in this file.
 
 - Enhanced npm-GitHub integration with bugs and homepage fields
 - Improved version check logic to prevent showing same notification twice
+- Removed "Functions under 20 lines" restriction from Guardian protocol
+- Added "NEVER make unasked changes" warning to Guardian protocol
 
 ## [0.3.0] - 2024-12-08
 
