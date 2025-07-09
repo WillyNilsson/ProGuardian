@@ -92,7 +92,87 @@ gemini "add error handling to the API"
 
 The AI should now follow the Guardian protocol - planning before coding, reviewing implementation, and running actual tests. In practice, you might need to remind it occasionally (is that the Guardian way?), as AIs don't always stick to their context files.
 
+## Helpful Command Examples
+
+### Quick Copy-Paste Commands for Your AI
+
+When working with your AI assistant, you can use these prompts to ensure it follows the Guardian protocol:
+
+```bash
+# Initial project check
+"Does this project adhere to the ProGuardian Standard?"
+
+# Starting a new feature
+"Follow the ProGuardian workflow when you implement this feature"
+
+# When you notice shortcuts being taken
+"Are you following the Guardian protocol? Show me the review evidence"
+
+# When tests are failing
+"According to Guardian protocol, we fix code not tests. Please diagnose the root cause"
+
+# Before committing
+"Run through the Guardian review checklist before we commit"
+
+# When you see TODOs or placeholders
+"Guardian protocol forbids placeholders. Please complete the implementation"
+
+# For security-sensitive code
+"Apply Guardian security review to this authentication code"
+
+# When reviewing a PR
+"Review this code against Guardian quality standards"
 ```
+
+### Common Scenarios
+
+**Starting a new project:**
+```bash
+claude init
+proguardian init
+claude "Set up a Node.js Express API with PostgreSQL following Guardian standards"
+```
+
+**Adding a complex feature:**
+```bash
+claude "Follow the ProGuardian workflow to implement user authentication with JWT"
+```
+
+**Fixing bugs without compromising tests:**
+```bash
+claude "Tests are failing. Follow Guardian protocol: diagnose, fix code (not tests), verify"
+```
+
+**Ensuring production readiness:**
+```bash
+claude "Review this codebase against the Guardian production checklist"
+```
+
+## Configuration
+
+### Update Notifications
+
+ProGuardian automatically checks for updates in the background (similar to Claude Code). When a new version is available, you'll see a notification:
+
+```
+╭─────────────────────────────────────────────────────╮
+│                                                     │
+│  Update available! 0.3.0 → 1.0.0                   │
+│                                                     │
+│  Run npm update -g @proguardian/cli to update      │
+│                                                     │
+│  Disable this check with PROGUARDIAN_NO_UPDATE_CHECK=1 │
+│                                                     │
+╰─────────────────────────────────────────────────────╯
+```
+
+To disable update checks, set the environment variable:
+
+```bash
+export PROGUARDIAN_NO_UPDATE_CHECK=1
+```
+
+Update checks are also automatically disabled in CI environments.
 
 ## Contributing
 
@@ -113,4 +193,4 @@ Apache 2.0.
 ---
 
 *ProGuardian is a personal project not affiliated with Anthropic (Claude) or Google (Gemini), though I would obviously love for that to change.*
-```
+

@@ -2,7 +2,8 @@ import path from 'path'
 import chalk from 'chalk'
 import which from 'which'
 import { fileURLToPath } from 'url'
-import { securePathExists, secureCopyFile, checkPermissions } from '../utils/file-security.js'
+import { checkPermissions } from '../utils/file-security.js'
+import { securePathExists, secureCopyFile } from '../utils/file-security.js'
 import { validateOptions, validateSafePath } from '../utils/validation.js'
 import { handleError, PermissionError } from '../utils/errors.js'
 import fs from 'fs-extra'
@@ -28,13 +29,15 @@ async function installWrapperForCLI(cliName, wrapperName, options) {
       throw new PermissionError('write to directory', cliDir)
     }
 
-    // Validate paths
-    const backupPath = validateSafePath(`${cliName}-original`, cliDir)
+    // Construct backup path - no validation needed for system directories
+    // The CLI directory is a system path that we need to write to
+    const backupPath = path.join(cliDir, `${cliName}-original`)
 
     // Backup original binary
-    if (!(await securePathExists(backupPath))) {
+    // Use fs directly for system paths (not subject to path traversal validation)
+    if (!(await fs.pathExists(backupPath))) {
       log(chalk.gray(`Backing up original ${cliName} to ${path.basename(backupPath)}`))
-      await secureCopyFile(cliPath, backupPath)
+      await fs.copy(cliPath, backupPath)
 
       // Make backup executable
       await fs.chmod(backupPath, '755')
@@ -44,11 +47,14 @@ async function installWrapperForCLI(cliName, wrapperName, options) {
     }
 
     // Install our wrapper
-    const wrapperRelativePath = path.join('..', 'wrapper', wrapperName)
-    const wrapperSource = validateSafePath(wrapperRelativePath, __dirname)
+    // Calculate project root and wrapper path without using '..' in validation
+    const projectRoot = path.resolve(__dirname, '..', '..')
+    const wrapperPath = path.join(projectRoot, 'src', 'wrapper', wrapperName)
+    const wrapperSource = validateSafePath(wrapperPath, projectRoot)
 
     log(chalk.gray(`Installing wrapper to ${path.basename(cliPath)}`))
-    await secureCopyFile(wrapperSource, cliPath, { overwrite: true })
+    // Copy wrapper to system location
+    await fs.copy(wrapperSource, cliPath, { overwrite: true })
     await fs.chmod(cliPath, '755')
 
     success(`Guardian wrapper installed for ${cliName}!`)

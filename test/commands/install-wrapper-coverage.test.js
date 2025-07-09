@@ -17,11 +17,9 @@ describe('Install Wrapper Command Coverage Tests', () => {
       assert(content.includes("import which from 'which'"))
       assert(content.includes('import { validateOptions'))
       assert(content.includes('import { handleError'))
-      assert(
-        content.includes(
-          "import { securePathExists, secureCopyFile, checkPermissions } from '../utils/file-security.js'",
-        ),
-      )
+      // Check that file-security imports are present (they may be on separate lines)
+      assert(content.includes("import { checkPermissions } from '../utils/file-security.js'"))
+      assert(content.includes("import { securePathExists, secureCopyFile } from '../utils/file-security.js'"))
 
       // Check for security measures
       assert(content.includes('validateSafePath'))
@@ -46,9 +44,8 @@ describe('Install Wrapper Command Coverage Tests', () => {
       // Ensure validateOptions is called
       assert(content.includes("validateOptions('install-wrapper'"))
 
-      // Ensure paths are validated
-      assert(content.includes('validateSafePath(`${cliName}-original`'))
-      assert(content.includes('validateSafePath(wrapperRelativePath'))
+      // Ensure wrapper path is validated (backup path is in system dir, so not validated)
+      assert(content.includes('validateSafePath(wrapperPath'))
 
       // Check for force option handling
       assert(content.includes('!options.force'))

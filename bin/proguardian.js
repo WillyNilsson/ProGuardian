@@ -23,6 +23,7 @@ import { installWrapper } from '../src/commands/install-wrapper.js'
 import chalk from 'chalk'
 import { handleError } from '../src/utils/errors.js'
 import { error } from '../src/utils/logger.js'
+import { checkForUpdatesInBackground } from '../src/utils/version-check.js'
 
 // Global error handling
 process.on('uncaughtException', (err) => {
@@ -38,7 +39,7 @@ process.on('unhandledRejection', (reason, promise) => {
 program
   .name('proguardian')
   .description('Guardian supervision for AI coding assistants')
-  .version('0.1.0')
+  .version('1.0.0')
 
 program
   .command('init')
@@ -104,6 +105,9 @@ for (const arg of args) {
     process.exit(1)
   }
 }
+
+// Check for updates in the background (non-blocking)
+checkForUpdatesInBackground()
 
 program.parse()
 

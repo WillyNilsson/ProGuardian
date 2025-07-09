@@ -25,8 +25,10 @@ async function runGeminiWithGuardian() {
       // Ensure GEMINI.md exists and is up to date
       if (!(await securePathExists(geminiMdPath))) {
         warn('Restoring GEMINI.md...')
-        const templateRelativePath = path.join('..', '..', 'templates', 'GEMINI.md')
-        const templatePath = validateSafePath(templateRelativePath, __dirname)
+        // Calculate project root and template path without using '..' in validation
+        const projectRoot = path.resolve(__dirname, '..', '..')
+        const templateFullPath = path.join(projectRoot, 'templates', 'GEMINI.md')
+        const templatePath = validateSafePath(templateFullPath, projectRoot)
         await secureCopyFile(templatePath, geminiMdPath)
       }
 

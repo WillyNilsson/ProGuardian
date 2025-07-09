@@ -51,3 +51,6 @@ export {
 
 // Export logger utilities
 export { logger, log, info, success, error, warn, debug, LogLevel } from './logger.js'
+
+// Export version check utilities
+export { checkForUpdates, checkForUpdatesInBackground } from './version-check.js'

@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2024-12-09
+
+### Added
+
+- Helpful command examples in README for common ProGuardian prompts
+- Quick copy-paste commands for enforcing Guardian protocol
+- Common scenario examples for real-world usage
+
+### Coming Soon
+
+- Version check utility for update notifications (like Claude Code)
+
 ## [0.3.0] - 2024-12-08
 
 ### Changed
