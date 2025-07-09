@@ -36,8 +36,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/WillyNilsson/ProGuardian.git"
+    "url": "git+https://github.com/WillyNilsson/ProGuardian.git"
   },
+  "bugs": {
+    "url": "https://github.com/WillyNilsson/ProGuardian/issues"
+  },
+  "homepage": "https://github.com/WillyNilsson/ProGuardian#readme",
   "author": "VibeCoders",
   "license": "Apache-2.0",
   "devDependencies": {

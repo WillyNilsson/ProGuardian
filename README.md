@@ -3,6 +3,7 @@
 [![CI Status](https://github.com/WillyNilsson/ProGuardian/workflows/CI/badge.svg)](https://github.com/WillyNilsson/ProGuardian/actions/workflows/ci.yml)
 [![Coverage Status](https://codecov.io/gh/WillyNilsson/ProGuardian/branch/main/graph/badge.svg)](https://codecov.io/gh/WillyNilsson/ProGuardian)
 [![npm version](https://badge.fury.io/js/@proguardian%2Fcli.svg)](https://www.npmjs.com/package/@proguardian/cli)
+[![npm downloads](https://img.shields.io/npm/dm/@proguardian/cli)](https://www.npmjs.com/package/@proguardian/cli)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Security Scan](https://github.com/WillyNilsson/ProGuardian/workflows/Security/badge.svg)](https://github.com/WillyNilsson/ProGuardian/actions/workflows/security.yml)
 
