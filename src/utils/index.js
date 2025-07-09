@@ -50,13 +50,4 @@ export {
 } from './cli-detector.js'
 
 // Export logger utilities
-export {
-  logger,
-  log,
-  info,
-  success,
-  error,
-  warn,
-  debug,
-  LogLevel,
-} from './logger.js'
+export { logger, log, info, success, error, warn, debug, LogLevel } from './logger.js'

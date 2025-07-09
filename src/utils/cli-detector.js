@@ -126,8 +126,8 @@ export async function promptForCLIAsync(available) {
   return new Promise((resolve) => {
     rl.question('\nPlease enter your choice (1 or 2): ', (answer) => {
       rl.close()
-      
-      const selected = options.find(opt => opt.choice === answer.trim())
+
+      const selected = options.find((opt) => opt.choice === answer.trim())
       if (selected) {
         resolve(selected.value)
       } else {

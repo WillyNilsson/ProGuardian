@@ -38,9 +38,10 @@ The idea is that each review gate should be completed before proceeding, with ev
 
 ## Status: Work in Progress
 
-This is an active project I'm continuously improving based on my own usage. It's not perfect or complete - I'm discovering edge cases and refining the approach as I use it daily. 
+This is an active project I'm continuously improving based on my own usage. It's not perfect or complete - I'm discovering edge cases and refining the approach as I use it daily.
 
 Current state:
+
 - ✅ Core workflow implemented and tested
 - ✅ Works with both Claude Code and Gemini CLI
 - ✅ Published on npm for easy installation
@@ -64,6 +65,7 @@ npm install -g @proguardian/cli
 ## Usage
 
 ### 1. Initialize Guardian in your project:
+
 ```bash
 cd your-project
 proguardian init
@@ -72,6 +74,7 @@ proguardian init
 This enhances your existing CLAUDE.md or GEMINI.md file (or creates one if needed).
 
 ### 2. Optional: Install the wrapper
+
 ```bash
 proguardian install-wrapper
 ```
@@ -79,6 +82,7 @@ proguardian install-wrapper
 This creates a wrapper that automatically enforces Guardian mode when `.proguardian` exists.
 
 ### 3. Use your AI assistant normally
+
 ```bash
 claude "implement user authentication"
 # or
@@ -108,3 +112,4 @@ Apache 2.0.
 ---
 
 *ProGuardian is a personal project not affiliated with Anthropic (Claude) or Google (Gemini), though I would obviously love for that to change.*
+```

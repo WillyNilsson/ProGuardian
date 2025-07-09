@@ -47,7 +47,7 @@ describe('Install Wrapper Command Coverage Tests', () => {
       assert(content.includes("validateOptions('install-wrapper'"))
 
       // Ensure paths are validated
-      assert(content.includes("validateSafePath(`${cliName}-original`"))
+      assert(content.includes('validateSafePath(`${cliName}-original`'))
       assert(content.includes('validateSafePath(wrapperRelativePath'))
 
       // Check for force option handling

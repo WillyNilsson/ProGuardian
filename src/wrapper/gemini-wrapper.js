@@ -105,7 +105,7 @@ FORBIDDEN: Skipping reviews, proceeding with issues, placeholder code
 REQUIRED: Show evidence of each review (checklist items checked)
 
 Each review must check relevant items from GEMINI.md quality checklist.`
-      
+
       const env = {
         ...process.env,
         GEMINI_GUARDIAN_MODE: 'active',
