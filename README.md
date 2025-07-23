@@ -196,4 +196,4 @@ Apache 2.0.
 
 ---
 
-_ProGuardian is a personal project not affiliated with Anthropic (Claude) or Google (Gemini), though I would obviously love for that to change._
+_ProGuardian is a personal project not affiliated with Anthropic (Claude) or Google (Gemini)._
